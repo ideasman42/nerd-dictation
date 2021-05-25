@@ -1,0 +1,9 @@
+# Generic files to ignore.
+.*
+
+# Python temp paths.
+__pycache__/
+*.py[cod]
+
+# Fallback location used for the language model.
+/model

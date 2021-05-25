@@ -1,0 +1,817 @@
+#!/bin/env python3
+
+# ##### BEGIN GPL LICENSE BLOCK #####
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# ##### END GPL LICENSE BLOCK #####
+
+"""
+This is a utility that activates text to speech in Linux.
+While it could use any system currently it uses the VOSK-API.
+
+Other dependencies include:
+
+- `parec`: Command line tool that records from pulse-audio.
+- `xdotool` Types the text into X11.
+
+Note the moving this to other systems such as WAYLAND shouldn't be a problem.
+
+Example usage:
+
+    nerd-dictation begin
+
+To end and type out the text:
+
+    nerd-dictation end
+"""
+
+# Using vosk-sdk, see:
+# https://alphacephei.com/vosk/install
+
+# All built in modules.
+import argparse
+import json
+import os
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+
+# Types.
+from typing import (
+    Dict,
+    List,
+    Optional,
+    Callable,
+    Set,
+    Tuple,
+)
+from types import (
+    ModuleType,
+)
+
+TEMP_COOKIE_NAME = "nerd-dictation.cookie"
+
+USER_CONFIG_DIR = "nerd-dictation"
+
+USER_CONFIG = "nerd-dictation.py"
+
+# Extra time to record (in seconds).
+# NOTE: ideally this would not be necessary, however buffering data from the pipe means
+# some extra delay is needed.
+#
+# TODO: make this an option or use a more sophisticated method of recording.
+RECORD_OVERTIME = 0.3
+
+# -----------------------------------------------------------------------------
+# General Utilities
+#
+
+
+def touch(filepath: str) -> None:
+    if os.path.exists(filepath):
+        os.utime(filepath, None)
+    else:
+        open(filepath, "a").close()
+
+
+def file_mtime_or_none(filepath: str) -> Optional[float]:
+    try:
+        return os.stat(filepath)[stat.ST_MTIME]
+    except FileNotFoundError:
+        return None
+
+
+def file_age_in_seconds(filepath: str) -> float:
+    """
+    Return the age of the file in seconds.
+    """
+    return time.time() - os.stat(filepath)[stat.ST_MTIME]
+
+
+def file_remove_if_exists(filepath: str) -> bool:
+    try:
+        os.remove(filepath)
+        return True
+    except OSError:
+        return False
+
+
+def execfile(filepath: str, mod: Optional[ModuleType] = None) -> Optional[ModuleType]:
+    """
+    Execute a file path as a Python script.
+    """
+
+    import importlib.util
+
+    mod_name = "__main__"
+    mod_spec = importlib.util.spec_from_file_location(mod_name, filepath)
+    if mod is None:
+        mod = importlib.util.module_from_spec(mod_spec)
+
+    # While the module name is not added to `sys.modules`, it's important to temporarily
+    # include this so statements such as `sys.modules[cls.__module__].__dict__` behave as expected.
+    # See: https://bugs.python.org/issue9499 for details.
+    modules = sys.modules
+    mod_orig = modules.get(mod_name, None)
+    modules[mod_name] = mod
+
+    # No error suppression, just ensure `sys.modules[mod_name]` is properly restored in the case of an error.
+    try:
+        # `mypy` doesn't know about this function.
+        mod_spec.loader.exec_module(mod)  # type: ignore
+    finally:
+        if mod_orig is None:
+            modules.pop(mod_name, None)
+        else:
+            modules[mod_name] = mod_orig
+
+    return mod
+
+
+# -----------------------------------------------------------------------------
+# Custom Configuration
+#
+
+
+def calc_user_config_path(rest: Optional[str]) -> str:
+    """
+    Path to the user's configuration directory.
+    """
+    base = os.environ.get("XDG_CONFIG_HOME")
+    if base is None:
+        base = os.path.expanduser("~")
+        if os.name == "posix":
+            base = os.path.join(base, ".config")
+
+    base = os.path.join(base, USER_CONFIG_DIR)
+    if rest:
+        base = os.path.join(base, rest)
+    return base
+
+
+# -----------------------------------------------------------------------------
+# Number passing
+#
+# Note this could be extracted into it's own small library.
+
+
+def from_words_to_digits_setup_once() -> Tuple[Set[str], Dict[str, Tuple[int, int, str]]]:
+
+    number_words = {}
+    # A set of words that can be used to start numeric expressions.
+    valid_digit_words: Set[str] = set()
+
+    # Singles.
+    units = (
+        (("zero", ""), ("zeroes", "'s"), ("zeroth", "th")),
+        (("one", ""), ("ones", "'s"), ("first", "st")),
+        (("two", ""), ("twos", "'s"), ("second", "nd")),
+        (("three", ""), ("threes", "'s"), ("third", "rd")),
+        (("four", ""), ("fours", "'s"), ("fourth", "th")),
+        (("five", ""), ("fives", "'s"), ("fifth", "th")),
+        (("six", ""), ("sixes", "'s"), ("sixth", "th")),
+        (("seven", ""), ("sevens", "'s"), ("seventh", "th")),
+        (("eight", ""), ("eights", "'s"), ("eighth", "th")),
+        (("nine", ""), ("nines", "'s"), ("ninth", "th")),
+        (("ten", ""), ("tens", "'s"), ("tenth", "th")),
+        (("eleven", ""), ("elevens", "'s"), ("eleventh", "th")),
+        (("twelve", ""), ("twelves", "'s"), ("twelfth", "th")),
+        (("thirteen", ""), ("thirteens", "'s"), ("thirteenth", "th")),
+        (("fourteen", ""), ("fourteens", "'s"), ("fourteenth", "th")),
+        (("fifteen", ""), ("fifteens", "'s"), ("fifteenth", "th")),
+        (("sixteen", ""), ("sixteens", "'s"), ("sixteenth", "th")),
+        (("seventeen", ""), ("seventeens", "'s"), ("seventeenth", "th")),
+        (("eighteen", ""), ("eighteens", "'s"), ("eighteenth", "th")),
+        (("nineteen", ""), ("nineteens", "'s"), ("nineteenth", "th")),
+    )
+
+    # Tens.
+    tens = (
+        (("", ""), ("", ""), ("", "")),
+        (("", ""), ("", ""), ("", "")),
+        (("twenty", ""), ("twenties", "'s"), ("twentieth", "th")),
+        (("thirty", ""), ("thirties", "'s"), ("thirtieth", "th")),
+        (("forty", ""), ("forties", "'s"), ("fortieth", "th")),
+        (("fifty", ""), ("fifties", "'s"), ("fiftieth", "th")),
+        (("sixty", ""), ("sixties", "'s"), ("sixtieth", "th")),
+        (("seventy", ""), ("seventies", "'s"), ("seventieth", "th")),
+        (("eighty", ""), ("eighties", "'s"), ("eightieth", "th")),
+        (("ninety", ""), ("nineties", "'s"), ("ninetieth", "th")),
+    )
+
+    # Larger scales.
+    scales = (
+        (("hundred", ""), ("hundreds", "s"), ("hundredth", "th")),
+        (("thousand", ""), ("thousands", "s"), ("thousandth", "th")),
+        (("million", ""), ("millions", "s"), ("millionth", "th")),
+        (("billion", ""), ("billions", "s"), ("billionth", "th")),
+        (("trillion", ""), ("trillions", "s"), ("trillionth", "th")),
+    )
+
+    # divisors
+    number_words["and"] = (1, 0, "")
+
+    # Perform our loops and start the swap.
+    for idx, word_pairs in enumerate(units):
+        for word, suffix in word_pairs:
+            number_words[word] = (1, idx, suffix)
+    for idx, word_pairs in enumerate(tens):
+        for word, suffix in word_pairs:
+            number_words[word] = (1, idx * 10, suffix)
+    for idx, word_pairs in enumerate(scales):
+        for word, suffix in word_pairs:
+            number_words[word] = (10 ** (idx * 3 or 2), 0, suffix)
+
+    valid_digit_words.update(number_words.keys())
+    valid_digit_words.remove("and")
+    valid_digit_words.remove("")
+    return valid_digit_words, number_words
+
+
+# Originally based on: https://ao.gl/how-to-convert-numeric-words-into-numbers-using-python/
+class from_words_to_digits:
+
+    valid_digit_words, _number_words = from_words_to_digits_setup_once()
+
+    @staticmethod
+    def _parse_number_as_series_of_units(
+        word_list: List[str],
+        word_index: int,
+    ) -> Tuple[int, str, int]:
+        """
+        Convert a series of unit numbers into a single int.
+        `one two three` -> `123`.
+        """
+        number_words = from_words_to_digits._number_words
+
+        # First detect a series of numbers, e.g:
+        # two four six eight
+        # Should be 2468 not the result of (2+4+6+8).
+        word_index_init = word_index
+        unit_numbers = []
+        while word_index < len(word_list):
+            word_data = number_words.get(word_list[word_index])
+            if word_data is None:
+                break
+
+            scale, increment, suffix = word_data
+            if suffix == "" and scale == 1 and increment < 10:
+                unit_numbers.append(increment)
+                word_index += 1
+            else:
+                break
+
+        if len(unit_numbers) > 1:
+            return int("".join([str(n) for n in unit_numbers])), "", word_index
+
+        return 0, "", word_index_init
+
+    @staticmethod
+    def parse_number(
+        word_list: List[str],
+        word_index: int,
+    ) -> Tuple[int, str, int]:
+        number_words = from_words_to_digits._number_words
+
+        # Check if this is a series of unit values, in this case it makes most sense to put the number in a series
+        # (think reciting a phone number).
+        ret = from_words_to_digits._parse_number_as_series_of_units(word_list, word_index)
+        if ret[2] != word_index:
+            return ret
+        del ret
+
+        # Primary loop.
+        current = result = 0
+        suffix = ""
+        # Loop while splitting to break into individual words.
+        while word_index < len(word_list):
+            word_data = number_words.get(word_list[word_index])
+            if word_data is None:
+                return result + current, suffix, word_index
+                # raise Exception('Illegal word: ' + word)
+
+            # Use the index by the multiplier.
+            scale, increment, suffix = word_data
+            current = (current * scale) + increment
+
+            # If larger than 100 then push for a round 2.
+            if scale > 100:
+                result += current
+                current = 0
+            word_index += 1
+
+            # Once there is a suffix, don't attempt to parse extra numbers.
+            if suffix:
+                break
+
+        # Return the result plus the current.
+        return result + current, suffix, word_index
+
+    @staticmethod
+    def parse_numbers_in_word_list(
+        word_list: List[str],
+        numbers_use_separator: bool = False,
+    ) -> None:
+        i = 0
+        i_number_prev = -1
+        while i < len(word_list):
+            if word_list[i] in from_words_to_digits.valid_digit_words:
+                number, suffix, i_next = from_words_to_digits.parse_number(word_list, i)
+                if i != i_next:
+                    word_list[i:i_next] = [("{:,d}".format(number) if numbers_use_separator else str(number)) + suffix]
+
+                    if (i_number_prev != -1) and (i_number_prev + 1 != i):
+                        words_between = tuple(word_list[i_number_prev + 1 : i])
+                        found = True
+                        # While other  more here for now this is enough.
+                        if words_between == ("point",):
+                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + "." + word_list[i]]
+                        elif words_between == ("minus",):
+                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + " - " + word_list[i]]
+                        elif words_between == ("plus",):
+                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + " + " + word_list[i]]
+                        elif words_between == ("divided", "by"):
+                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + " / " + word_list[i]]
+                        elif words_between in {("multiplied", "by"), ("times",)}:
+                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + " * " + word_list[i]]
+                        elif words_between == ("modulo",):
+                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + " % " + word_list[i]]
+                        else:
+                            found = False
+
+                        if found:
+                            i = i_number_prev
+
+                    i_number_prev = i
+                    i -= 1
+            i += 1
+
+
+# -----------------------------------------------------------------------------
+# Process Text
+#
+
+
+def process_text_with_user_config(text: str) -> str:
+    user_config = calc_user_config_path(USER_CONFIG)
+    if not os.path.exists(user_config):
+        return text
+
+    try:
+        mod = execfile(user_config)
+    except Exception as ex:
+        sys.stderr.write("Failed to run %r with error %s\n" % (user_config, str(ex)))
+        sys.exit(1)
+
+    process_fn_name = "nerd_dictation_process"
+    process_fn = getattr(mod, process_fn_name)
+    if process_fn is None:
+        sys.stderr.write("User configuration %r has no %r function\n" % (user_config, process_fn_name))
+        return text
+
+    try:
+        text = process_fn(text)
+    except Exception as ex:
+        sys.stderr.write("Failed to run %r with error %s\n" % (user_config, str(ex)))
+        sys.exit(1)
+
+    if not isinstance(text, str):
+        sys.stderr.write("%r returned a %r type, instead of a string\n" % (process_fn_name, type(text)))
+        sys.exit(1)
+
+    return text
+
+
+def process_text(
+    text: str,
+    *,
+    full_sentence: bool = False,
+    numbers_as_digits: bool = False,
+    numbers_use_separator: bool = False,
+) -> str:
+    """
+    Basic post processing on text.
+    Mainly to capitalize words however other kinds of replacements may be supported.
+    """
+
+    # Make absolutely sure we never add new lines in text that is typed in.
+    # As this will press the return key when used with `xdotool`.
+    text = text.replace("\n", " ")
+    words = text.split(" ")
+
+    # Fist parse numbers.
+    if numbers_as_digits:
+        from_words_to_digits.parse_numbers_in_word_list(
+            words,
+            numbers_use_separator=numbers_use_separator,
+        )
+
+    # Optional?
+    if full_sentence:
+        words[0] = words[0].capitalize()
+        words[-1] = words[-1]
+
+    return " ".join(words)
+
+
+# -----------------------------------------------------------------------------
+# Text from VOSK
+#
+
+
+def text_from_vosk_pipe(
+    *,
+    vosk_model_dir: str,
+    exit_fn: Callable[..., int],
+    pulse_device_name: str = "",
+) -> str:
+
+    if not os.path.exists(vosk_model_dir):
+        print(
+            "Please download the model from https://alphacephei.com/vosk/models and unpack it to %r." % vosk_model_dir
+        )
+        return ""
+
+    cmd = (
+        "parec",
+        "--record",
+        "--rate=44100",
+        "--channels=1",
+        *(("--device=%s" % pulse_device_name,) if pulse_device_name else ()),
+        "--format=s16ne",
+        "--latency=10",
+    )
+    ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+
+    # Set non blocking.
+    import fcntl
+
+    stdout = ps.stdout
+    assert stdout is not None
+    flags = fcntl.fcntl(stdout.fileno(), fcntl.F_GETFL)  # Get current `ps.stdout` flags.
+    fcntl.fcntl(stdout, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+    # `mypy` doesn't know about VOSK.
+    import vosk  # type: ignore
+
+    vosk.SetLogLevel(-1)
+
+    model = vosk.Model(vosk_model_dir)
+    rec = vosk.KaldiRecognizer(model, 44100)
+    # 1mb (allow for loading the model to take some time).
+    block_size = 104_8576
+
+    while True:
+        # -1=cancel, 0=continue, 1=finish.
+        code = exit_fn()
+
+        if code != -1:
+            # Mostly the data read is quite small (under 1k).
+            # Only the 1st entry in the loop reads a lot of data due to the time it takes to initialize the VOSK module.
+            data = stdout.read(block_size)
+
+            if data:
+                rec.AcceptWaveform(data)
+
+                # # If we wanted output as we go...
+                # if rec.AcceptWaveform(data):
+                #     print(rec.Result())
+                # else:
+                #     print(rec.PartialResult())
+
+        if code != 0:
+            import signal
+
+            os.kill(ps.pid, signal.SIGINT)
+            break
+
+    if code == -1:
+        print("Text input canceled")
+        sys.exit(0)
+
+    json_text = rec.FinalResult()
+
+    # This writes many JSON blocks, use the last one.
+    json_data = json.loads(json_text)
+    result = json_data["text"]
+    assert isinstance(result, str)
+    return result
+
+
+def main_begin(
+    *,
+    vosk_model_dir: str,
+    path_to_cookie: str = "",
+    pulse_device_name: str = "",
+    full_sentence: bool = False,
+    numbers_as_digits: bool = False,
+    numbers_use_separator: bool = False,
+    punctuate_from_previous_timeout: float = 0.0,
+) -> None:
+    """
+    Initialize audio recording, then full text to speech conversion can take place.
+
+    This is terminated by the ``end`` function.
+    """
+
+    # Find language model in:
+    # - `--vosk-model-dir=...`
+    # - `~/.config/nerd-dictation/model`
+    # - `$PWD/model`
+    if not vosk_model_dir:
+        vosk_model_dir = calc_user_config_path("model")
+        if not os.path.exists(vosk_model_dir):
+            vosk_model_dir_test = os.path.normpath(os.path.join(os.getcwd(), "model"))
+            if not os.path.exists(vosk_model_dir_test):
+                vosk_model_dir = vosk_model_dir_test
+        # If this still doesn't exist the error is handled later.
+
+    #
+    # Initialize the recording state and perform some sanity checks.
+    #
+    if not path_to_cookie:
+        path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
+
+    is_run_on = False
+    if punctuate_from_previous_timeout > 0.0:
+        age_in_seconds: Optional[float] = None
+        try:
+            age_in_seconds = file_age_in_seconds(path_to_cookie)
+        except FileNotFoundError:
+            age_in_seconds = None
+        is_run_on = age_in_seconds is not None and (age_in_seconds < punctuate_from_previous_timeout)
+        del age_in_seconds
+
+    touch(path_to_cookie)
+
+    cookie_timestamp = file_mtime_or_none(path_to_cookie)
+    if cookie_timestamp is None:
+        print("Cookie removed after right after creation (unlikely but respect the request)")
+        return
+
+    #
+    # Start recording the output file.
+    #
+
+    touch_mtime = None
+
+    def exit_fn() -> int:
+        nonlocal touch_mtime
+        if not os.path.exists(path_to_cookie):
+            return -1  # Cancel.
+        if file_mtime_or_none(path_to_cookie) != cookie_timestamp:
+            # Implement `RECORD_OVERTIME` workaround.
+
+            if RECORD_OVERTIME > 0.0:
+                if touch_mtime is None:
+                    touch_mtime = time.time()
+                if time.time() - touch_mtime < RECORD_OVERTIME:
+                    # Continue until `RECORD_OVERTIME` is reached.
+                    return 0
+            # End `RECORD_OVERTIME`.
+
+            return 1  # End.
+        return 0  # Continue.
+
+    text = text_from_vosk_pipe(
+        vosk_model_dir=vosk_model_dir,
+        pulse_device_name=pulse_device_name,
+        exit_fn=exit_fn,
+    )
+
+    #
+    # User text post processing (when found).
+    #
+    text = process_text_with_user_config(text)
+
+    #
+    # Simple text post processing and capitalization.
+    #
+    text = process_text(
+        text,
+        full_sentence=full_sentence,
+        numbers_as_digits=numbers_as_digits,
+        numbers_use_separator=numbers_use_separator,
+    )
+
+    if not text:
+        print("No text found in the audio")
+        # Avoid continuing punctuation from where this recording (which recorded nothing) left off.
+        touch(path_to_cookie)
+        return
+
+    if is_run_on:
+        if full_sentence:
+            text = ". " + text
+        else:
+            text = ", " + text
+
+    #
+    # Type the text into X11.
+    #
+    cmd = (
+        "xdotool",
+        "type",
+        # Use a value higher than twelve so the characters don't get skipped (tsk!).
+        "--delay",
+        "30",
+        text,
+    )
+    subprocess.check_output(cmd).decode("utf-8")
+
+
+def main_end(
+    *,
+    path_to_cookie: str = "",
+) -> None:
+    if not path_to_cookie:
+        path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
+
+    touch(path_to_cookie)
+
+
+def main_cancel(
+    *,
+    path_to_cookie: str = "",
+) -> None:
+    if not path_to_cookie:
+        path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
+
+    file_remove_if_exists(path_to_cookie)
+
+
+def argparse_generic_command_cookie(subparse: argparse.ArgumentParser) -> None:
+    subparse.add_argument(
+        "--cookie",
+        dest="path_to_cookie",
+        default="",
+        type=str,
+        help="Location for writing a temporary cookie (this file is monitored to begin/end dictation).",
+        required=False,
+    )
+
+
+def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
+    subparse = subparsers.add_parser(
+        "begin",
+        help="Begin dictation.",
+        description="""\
+This creates the directory used to store internal data, so other commands such as sync can be performed.
+    """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    argparse_generic_command_cookie(subparse)
+
+    subparse.add_argument(
+        "--vosk-model-dir",
+        default="",
+        dest="vosk_model_dir",
+        type=str,
+        help=("Path to the VOSK model, see: https://alphacephei.com/vosk/models"),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--pulse-device-name",
+        dest="pulse_device_name",
+        default="",
+        type=str,
+        help=(
+            "The name of the pulse-audio device to use for recording.\n"
+            'See the output of "pactl list" to find device names.'
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--punctuate-from-previous-timeout",
+        dest="punctuate_from_previous_timeout",
+        default=0.0,
+        type=float,
+        help=(
+            "The time-out in seconds for detecting the state of dictation from the previous recording, "
+            "this can be useful so punctuation it is added before entering the dictation"
+            "(zero disables)."
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--full-sentence",
+        dest="full_sentence",
+        default=False,
+        action="store_true",
+        help=("Capitalize the first character.\n" "This is also used to add either a comma or a full stop."),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--numbers-as-digits",
+        dest="numbers_as_digits",
+        default=False,
+        action="store_true",
+        help=("Convert numbers into digits instead of using whole words."),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--numbers-use-separator",
+        dest="numbers_use_separator",
+        default=False,
+        action="store_true",
+        help=("Use a comma separators for numbers."),
+        required=False,
+    )
+
+    subparse.set_defaults(
+        func=lambda args: main_begin(
+            path_to_cookie=args.path_to_cookie,
+            vosk_model_dir=args.vosk_model_dir,
+            pulse_device_name=args.pulse_device_name,
+            full_sentence=args.full_sentence,
+            numbers_as_digits=args.numbers_as_digits,
+            numbers_use_separator=args.numbers_use_separator,
+            punctuate_from_previous_timeout=args.punctuate_from_previous_timeout,
+        ),
+    )
+
+
+def argparse_create_end(subparsers: argparse._SubParsersAction) -> None:
+    subparse = subparsers.add_parser(
+        "end",
+        help="End dictation.",
+        description="""\
+This ends dictation, causing the text to be typed in.
+    """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    argparse_generic_command_cookie(subparse)
+
+    subparse.set_defaults(
+        func=lambda args: main_end(
+            path_to_cookie=args.path_to_cookie,
+        ),
+    )
+
+
+def argparse_create_cancel(subparsers: argparse._SubParsersAction) -> None:
+    subparse = subparsers.add_parser(
+        "cancel",
+        help="Cancel dictation.",
+        description="""\
+This cancels dictation.
+    """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    argparse_generic_command_cookie(subparse)
+
+    subparse.set_defaults(
+        func=lambda args: main_cancel(
+            path_to_cookie=args.path_to_cookie,
+        ),
+    )
+
+
+def argparse_create() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+
+    subparsers = parser.add_subparsers()
+
+    argparse_create_begin(subparsers)
+    argparse_create_end(subparsers)
+    argparse_create_cancel(subparsers)
+
+    return parser
+
+
+def main(argv: Optional[List[str]] = None) -> None:
+    parser = argparse_create()
+    args = parser.parse_args(argv)
+    # Call sub-parser callback.
+    if not hasattr(args, "func"):
+        parser.print_help()
+        return
+
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()
