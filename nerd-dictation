@@ -21,25 +21,7 @@
 """
 This is a utility that activates text to speech in Linux.
 While it could use any system currently it uses the VOSK-API.
-
-Other dependencies include:
-
-- `parec`: Command line tool that records from pulse-audio.
-- `xdotool` Types the text into X11.
-
-Note the moving this to other systems such as WAYLAND shouldn't be a problem.
-
-Example usage:
-
-    nerd-dictation begin
-
-To end and type out the text:
-
-    nerd-dictation end
 """
-
-# Using vosk-sdk, see:
-# https://alphacephei.com/vosk/install
 
 # All built in modules.
 import argparse
@@ -115,7 +97,6 @@ def execfile(filepath: str, mod: Optional[ModuleType] = None) -> Optional[Module
     """
     Execute a file path as a Python script.
     """
-
     import importlib.util
 
     mod_name = "__main__"
@@ -223,7 +204,7 @@ def from_words_to_digits_setup_once() -> Tuple[Set[str], Dict[str, Tuple[int, in
         (("trillion", ""), ("trillions", "s"), ("trillionth", "th")),
     )
 
-    # divisors
+    # Divisors.
     number_words["and"] = (1, 0, "")
 
     # Perform our loops and start the swap.
@@ -244,6 +225,7 @@ def from_words_to_digits_setup_once() -> Tuple[Set[str], Dict[str, Tuple[int, in
 
 
 # Originally based on: https://ao.gl/how-to-convert-numeric-words-into-numbers-using-python/
+# A module like class can't be instanced.
 class from_words_to_digits:
 
     valid_digit_words, _number_words = from_words_to_digits_setup_once()
@@ -410,7 +392,7 @@ def process_text(
     """
 
     # Make absolutely sure we never add new lines in text that is typed in.
-    # As this will press the return key when used with `xdotool`.
+    # As this will press the return key when using automated key input.
     text = text.replace("\n", " ")
     words = text.split(" ")
 
@@ -526,7 +508,7 @@ def main_begin(
     """
     Initialize audio recording, then full text to speech conversion can take place.
 
-    This is terminated by the ``end`` function.
+    This is terminated by the ``end`` or ``cancel`` actions.
     """
 
     # Find language model in:
