@@ -137,6 +137,20 @@ Details
 - Recording and speech to text a performed in parallel.
 
 
+Limitations
+===========
+
+- Text from VOSK is all lower-case,
+  while the user configuration can be used to set the case of common words like ``I`` this isn't very convenient
+  (see the example configuration for details).
+
+- For some users the delay in start up may be noticeable on systems with slower hard disks
+  especially when running for the 1st time (a cold start).
+
+  This is a limitation with the choice not to use a service that runs in the background.
+  Recording begins before any the speech-to-text components are loaded to mitigate this problem.
+
+
 Further Work
 ============
 
