@@ -23,6 +23,17 @@ This is a utility that activates text to speech in Linux.
 While it could use any system currently it uses the VOSK-API.
 """
 
+# NOTE: for developers
+#
+# - All messages should be displayed via the `sys.stderr`
+#   the main reason for this is it allows the text itself to be written to the `sys.stdout`
+#   other messages being mixed in.
+#   This works as no messages should be printed to the output when everything is working properly.
+#
+# - It is important for the recording to start as soon as possible so the recording does not start
+#   after the user has begun speaking.
+#   Some operations including importing `vosk` are delayed for this reason.
+
 # All built in modules.
 import argparse
 import json
@@ -424,8 +435,9 @@ def text_from_vosk_pipe(
 ) -> str:
 
     if not os.path.exists(vosk_model_dir):
-        print(
-            "Please download the model from https://alphacephei.com/vosk/models and unpack it to %r." % vosk_model_dir
+        sys.stderr.write(
+            "Please download the model from https://alphacephei.com/vosk/models and unpack it to %r.\n"
+            % vosk_model_dir
         )
         return ""
 
@@ -483,7 +495,7 @@ def text_from_vosk_pipe(
             break
 
     if code == -1:
-        print("Text input canceled")
+        sys.stderr.write("Text input canceled!\n")
         sys.exit(0)
 
     json_text = rec.FinalResult()
@@ -543,7 +555,7 @@ def main_begin(
 
     cookie_timestamp = file_mtime_or_none(path_to_cookie)
     if cookie_timestamp is None:
-        print("Cookie removed after right after creation (unlikely but respect the request)")
+        sys.stderr.write("Cookie removed after right after creation (unlikely but respect the request)\n")
         return
 
     #
@@ -592,7 +604,7 @@ def main_begin(
     )
 
     if not text:
-        print("No text found in the audio")
+        sys.stderr.write("No text found in the audio\n")
         # Avoid continuing punctuation from where this recording (which recorded nothing) left off.
         touch(path_to_cookie)
         return
