@@ -23,16 +23,7 @@ This is a utility that activates text to speech in Linux.
 While it could use any system currently it uses the VOSK-API.
 """
 
-# NOTE: for developers
-#
-# - All messages should be displayed via the `sys.stderr`
-#   the main reason for this is it allows the text itself to be written to the `sys.stdout`
-#   without other messages being mixed in.
-#   This works as no messages should be printed to the output when everything is working properly.
-#
-# - It is important for the recording to start as soon as possible so the recording does not start
-#   after the user has begun speaking.
-#   Some operations including importing `vosk` are delayed for this reason.
+# See: `hacking.rst` for developer notes.
 
 # All built in modules.
 import argparse
