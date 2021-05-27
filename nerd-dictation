@@ -738,6 +738,17 @@ This creates the directory used to store internal data, so other commands such a
         required=False,
     )
 
+    subparse.add_argument(
+        "-",
+        dest="rest",
+        default=False,
+        nargs=argparse.REMAINDER,
+        help=(
+            "End argument parsing.\n"
+            "This can be used for user defined arguments which configuration scripts may read from the `sys.argv`."
+        ),
+    )
+
     subparse.set_defaults(
         func=lambda args: main_begin(
             path_to_cookie=args.path_to_cookie,
