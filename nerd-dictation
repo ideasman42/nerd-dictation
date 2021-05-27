@@ -27,7 +27,7 @@ While it could use any system currently it uses the VOSK-API.
 #
 # - All messages should be displayed via the `sys.stderr`
 #   the main reason for this is it allows the text itself to be written to the `sys.stdout`
-#   other messages being mixed in.
+#   without other messages being mixed in.
 #   This works as no messages should be printed to the output when everything is working properly.
 #
 # - It is important for the recording to start as soon as possible so the recording does not start
@@ -165,8 +165,23 @@ def calc_user_config_path(rest: Optional[str]) -> str:
     return base
 
 
+def user_config_as_module_or_none() -> Optional[ModuleType]:
+
+    user_config_path = calc_user_config_path(USER_CONFIG)
+    if not os.path.exists(user_config_path):
+        return None
+
+    try:
+        user_config = execfile(user_config_path)
+    except Exception as ex:
+        sys.stderr.write("Failed to run %r with error %s\n" % (user_config, str(ex)))
+        sys.exit(1)
+
+    return user_config
+
+
 # -----------------------------------------------------------------------------
-# Number passing
+# Number Parsing
 #
 # Note this could be extracted into it's own small library.
 
@@ -369,19 +384,10 @@ class from_words_to_digits:
 #
 
 
-def process_text_with_user_config(text: str) -> str:
-    user_config = calc_user_config_path(USER_CONFIG)
-    if not os.path.exists(user_config):
-        return text
-
-    try:
-        mod = execfile(user_config)
-    except Exception as ex:
-        sys.stderr.write("Failed to run %r with error %s\n" % (user_config, str(ex)))
-        sys.exit(1)
+def process_text_with_user_config(user_config: ModuleType, text: str) -> str:
 
     process_fn_name = "nerd_dictation_process"
-    process_fn = getattr(mod, process_fn_name)
+    process_fn = getattr(user_config, process_fn_name)
     if process_fn is None:
         sys.stderr.write("User configuration %r has no %r function\n" % (user_config, process_fn_name))
         return text
@@ -533,7 +539,6 @@ def main_begin(
     # Find language model in:
     # - `--vosk-model-dir=...`
     # - `~/.config/nerd-dictation/model`
-    # - `$PWD/model`
     if not vosk_model_dir:
         vosk_model_dir = calc_user_config_path("model")
         # If this still doesn't exist the error is handled later.
@@ -572,8 +577,8 @@ def main_begin(
         if not os.path.exists(path_to_cookie):
             return -1  # Cancel.
         if file_mtime_or_none(path_to_cookie) != cookie_timestamp:
-            # Implement `RECORD_OVERTIME` workaround.
 
+            # Implement `RECORD_OVERTIME` workaround.
             if RECORD_OVERTIME > 0.0:
                 if touch_mtime is None:
                     touch_mtime = time.time()
@@ -592,9 +597,15 @@ def main_begin(
     )
 
     #
+    # Load the user configuration (when found).
+    #
+    user_config = user_config_as_module_or_none()
+
+    #
     # User text post processing (when found).
     #
-    text = process_text_with_user_config(text)
+    if user_config is not None:
+        text = process_text_with_user_config(user_config, text)
 
     #
     # Simple text post processing and capitalization.
