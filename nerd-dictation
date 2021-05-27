@@ -529,10 +529,6 @@ def main_begin(
     # - `$PWD/model`
     if not vosk_model_dir:
         vosk_model_dir = calc_user_config_path("model")
-        if not os.path.exists(vosk_model_dir):
-            vosk_model_dir_test = os.path.normpath(os.path.join(os.getcwd(), "model"))
-            if not os.path.exists(vosk_model_dir_test):
-                vosk_model_dir = vosk_model_dir_test
         # If this still doesn't exist the error is handled later.
 
     #

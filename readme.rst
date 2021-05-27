@@ -82,14 +82,20 @@ To test dictation:
 
 .. code-block:: sh
 
-   ./nerd-dictation begin &
+   ./nerd-dictation begin --vosk-model-dir=./model &
    # Start speaking.
    ./nerd-dictation end
 
 
-Reminder that it's up to you to bind begin/end/cancel to actions you can easily access (typically key shortcuts).
+- Reminder that it's up to you to bind begin/end/cancel to actions you can easily access (typically key shortcuts).
+- To avoid having to pass the ``--vosk-model-dir`` argument, copy the model to the default path:
 
-.. note::
+  .. code-block:: sh
+
+     mkdir -p ~/.config/nerd-dictation
+     mv ./model ~/.config/nerd-dictation
+
+.. hint::
 
    Once this is working properly you may wish to download one of the larger language models for more accurate dictation.
    They are available `here <https://alphacephei.com/vosk/models>`__.
@@ -126,7 +132,7 @@ Local Configuration
 Language Model
    ``~/.config/nerd-dictation/model``
 
-   Note that ``./model`` (in the current directory) is used as a fallback.
+   Note that ``--vosk-model-dir=PATH`` can be used to override the default.
 
 
 Details
