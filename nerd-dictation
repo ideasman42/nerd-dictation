@@ -520,6 +520,7 @@ def main_begin(
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
     punctuate_from_previous_timeout: float = 0.0,
+    output: str = "TYPE",
 ) -> None:
     """
     Initialize audio recording, then full text to speech conversion can take place.
@@ -621,17 +622,24 @@ def main_begin(
             text = ", " + text
 
     #
-    # Type the text into X11.
+    # Handled the resulting text
     #
-    cmd = (
-        "xdotool",
-        "type",
-        # Use a value higher than twelve so the characters don't get skipped (tsk!).
-        "--delay",
-        "30",
-        text,
-    )
-    subprocess.check_output(cmd).decode("utf-8")
+    if output == "SIMULATE_INPUT":
+        cmd = (
+            "xdotool",
+            "type",
+            # Use a value higher than twelve so the characters don't get skipped (tsk!).
+            "--delay",
+            "30",
+            text,
+        )
+        subprocess.check_output(cmd).decode("utf-8")
+
+    elif output == "STDOUT":
+        sys.stdout.write(text)
+    else:
+        # Unreachable.
+        assert False
 
 
 def main_end(
@@ -739,13 +747,29 @@ This creates the directory used to store internal data, so other commands such a
     )
 
     subparse.add_argument(
+        "--output",
+        dest="output",
+        default="SIMULATE_INPUT",
+        choices=("SIMULATE_INPUT", "STDOUT"),
+        metavar="OUTPUT_METHOD",
+        help=(
+            "Method used to at put the result of speech to text.\n"
+            "- ``TYPE`` simulate keystrokes (default).\n"
+            "- ``STDOUT`` print the result to the standard output.\n"
+            "  Be sure only to handle text from the standard output\n"
+            "  as the standard error may be used for reporting any problems that occur."
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
         "-",
         dest="rest",
         default=False,
         nargs=argparse.REMAINDER,
         help=(
             "End argument parsing.\n"
-            "This can be used for user defined arguments which configuration scripts may read from the `sys.argv`."
+            "This can be used for user defined arguments which configuration scripts may read from the ``sys.argv``."
         ),
     )
 
@@ -758,6 +782,7 @@ This creates the directory used to store internal data, so other commands such a
             numbers_as_digits=args.numbers_as_digits,
             numbers_use_separator=args.numbers_use_separator,
             punctuate_from_previous_timeout=args.punctuate_from_previous_timeout,
+            output=args.output,
         ),
     )
 
