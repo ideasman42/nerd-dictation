@@ -51,6 +51,10 @@ Numbers as Digits
 
    So ``Two four six eight`` becomes ``2,468``.
 
+Time Out
+   Optionally end speech to text early when no speech is detected for a given number of seconds.
+   (without an explicit call to ``end`` which is otherwise required).
+
 Output Type
    Output can simulate keystroke events (default) or simply print to the standard output.
 
@@ -144,6 +148,17 @@ Details
 - Typing in results will **never** press enter/return.
 - Pulse audio is used for recording.
 - Recording and speech to text a performed in parallel.
+
+
+Examples
+========
+
+
+Store the result of speech to text as a variable in the shell:
+
+.. code-block:: sh
+
+   SPEECH="$(nerd-dictation begin --timeout=1.0 --output=STDOUT)"
 
 
 Limitations

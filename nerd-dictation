@@ -437,6 +437,7 @@ def text_from_vosk_pipe(
     *,
     vosk_model_dir: str,
     exit_fn: Callable[..., int],
+    timeout: float,
     pulse_device_name: str = "",
 ) -> str:
 
@@ -474,6 +475,14 @@ def text_from_vosk_pipe(
     # 1mb (allow for loading the model to take some time).
     block_size = 104_8576
 
+    use_timeout = timeout != 0.0
+    if use_timeout:
+        timeout_text_prev = ""
+        timeout_time_prev = time.time()
+
+    # Collect the output used when time-out is enabled.
+    text_list = []
+
     while True:
         # -1=cancel, 0=continue, 1=finish.
         code = exit_fn()
@@ -484,13 +493,27 @@ def text_from_vosk_pipe(
             data = stdout.read(block_size)
 
             if data:
-                rec.AcceptWaveform(data)
+                ok = rec.AcceptWaveform(data)
 
-                # # If we wanted output as we go...
-                # if rec.AcceptWaveform(data):
-                #     print(rec.Result())
-                # else:
-                #     print(rec.PartialResult())
+                # Monitor the partial output.
+                # Finish if no changes are made for `timeout` seconds.
+                if use_timeout:
+                    if ok:
+                        json_text = rec.Result()
+                        json_data = json.loads(json_text)
+                        text = json_data["text"]
+                        assert isinstance(text, str)
+                        if text:
+                            text_list.append(text)
+                    else:
+                        # Only for comparison, to detect change.
+                        json_text = rec.PartialResult()
+
+                    if json_text != timeout_text_prev:
+                        timeout_text_prev = json_text
+                        timeout_time_prev = time.time()
+                    elif time.time() - timeout_time_prev > timeout:
+                        code = 1  # The time was exceeded, exit!
 
         if code != 0:
             import signal
@@ -502,13 +525,15 @@ def text_from_vosk_pipe(
         sys.stderr.write("Text input canceled!\n")
         sys.exit(0)
 
-    json_text = rec.FinalResult()
-
     # This writes many JSON blocks, use the last one.
+    json_text = rec.FinalResult()
     json_data = json.loads(json_text)
-    result = json_data["text"]
-    assert isinstance(result, str)
-    return result
+    text = json_data["text"]
+    assert isinstance(text, str)
+    if text:
+        text_list.append(text)
+
+    return " ".join(text_list)
 
 
 def main_begin(
@@ -519,6 +544,7 @@ def main_begin(
     full_sentence: bool = False,
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
+    timeout: float = 0.0,
     punctuate_from_previous_timeout: float = 0.0,
     output: str = "TYPE",
 ) -> None:
@@ -563,6 +589,7 @@ def main_begin(
     #
 
     touch_mtime = None
+    use_overtime = RECORD_OVERTIME > 0.0 and timeout == 0.0
 
     def exit_fn() -> int:
         nonlocal touch_mtime
@@ -571,7 +598,7 @@ def main_begin(
         if file_mtime_or_none(path_to_cookie) != cookie_timestamp:
 
             # Implement `RECORD_OVERTIME` workaround.
-            if RECORD_OVERTIME > 0.0:
+            if use_overtime:
                 if touch_mtime is None:
                     touch_mtime = time.time()
                 if time.time() - touch_mtime < RECORD_OVERTIME:
@@ -585,6 +612,7 @@ def main_begin(
     text = text_from_vosk_pipe(
         vosk_model_dir=vosk_model_dir,
         pulse_device_name=pulse_device_name,
+        timeout=timeout,
         exit_fn=exit_fn,
     )
 
@@ -707,6 +735,19 @@ This creates the directory used to store internal data, so other commands such a
     )
 
     subparse.add_argument(
+        "--timeout",
+        dest="timeout",
+        default=0.0,
+        type=float,
+        help=(
+            "Time out recording when no speeches processed for N seconds.\n"
+            "This can be used to avoid having to explicitly exit "
+            "(zero disables)."
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
         "--punctuate-from-previous-timeout",
         dest="punctuate_from_previous_timeout",
         default=0.0,
@@ -781,6 +822,7 @@ This creates the directory used to store internal data, so other commands such a
             full_sentence=args.full_sentence,
             numbers_as_digits=args.numbers_as_digits,
             numbers_use_separator=args.numbers_use_separator,
+            timeout=args.timeout,
             punctuate_from_previous_timeout=args.punctuate_from_previous_timeout,
             output=args.output,
         ),
