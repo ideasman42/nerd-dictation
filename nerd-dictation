@@ -672,7 +672,7 @@ def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
         description="""\
 This creates the directory used to store internal data, so other commands such as sync can be performed.
     """,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     argparse_generic_command_cookie(subparse)
@@ -769,7 +769,7 @@ def argparse_create_end(subparsers: argparse._SubParsersAction) -> None:
         description="""\
 This ends dictation, causing the text to be typed in.
     """,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     argparse_generic_command_cookie(subparse)
@@ -788,7 +788,7 @@ def argparse_create_cancel(subparsers: argparse._SubParsersAction) -> None:
         description="""\
 This cancels dictation.
     """,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     argparse_generic_command_cookie(subparse)
