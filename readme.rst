@@ -40,14 +40,9 @@ For details on how this can be used, see:
 Features
 ========
 
-The key features for this tool are.
-
-
-
 Specific features include:
 
-``--numbers-as-digits``
-
+Numbers as Digits
    Optional conversion from numbers to digits.
 
    So ``Three million five hundred and sixty second`` becomes ``3,000,562nd``.
@@ -55,6 +50,14 @@ Specific features include:
    A series of numbers (such as reciting a phone number) is also supported.
 
    So ``Two four six eight`` becomes ``2,468``.
+
+Output Type
+   Output can simulate keystroke events (default) or simply print to the standard output.
+
+User Configuration Script
+   User configuration is just a Python script which can be used to manipulate text using Python's full feature set.
+
+See ``nerd-dictation begin --help`` for details on how to access these options.
 
 
 Dependencies
