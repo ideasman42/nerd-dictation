@@ -47,6 +47,7 @@ import time
 # Types.
 from typing import (
     Dict,
+    IO,
     List,
     Optional,
     Callable,
@@ -102,6 +103,14 @@ def file_remove_if_exists(filepath: str) -> bool:
         return True
     except OSError:
         return False
+
+
+def file_handle_make_non_blocking(file_handle: IO[bytes]) -> None:
+    import fcntl
+
+    # Get current `file_handle` flags.
+    flags = fcntl.fcntl(file_handle.fileno(), fcntl.F_GETFL)
+    fcntl.fcntl(file_handle, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
 
 def execfile(filepath: str, mod: Optional[ModuleType] = None) -> Optional[ModuleType]:
@@ -452,13 +461,11 @@ def text_from_vosk_pipe(
     )
     ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
-    # Set non blocking.
-    import fcntl
-
     stdout = ps.stdout
     assert stdout is not None
-    flags = fcntl.fcntl(stdout.fileno(), fcntl.F_GETFL)  # Get current `ps.stdout` flags.
-    fcntl.fcntl(stdout, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+    # Needed so whatever is available can be read (without waiting).
+    file_handle_make_non_blocking(stdout)
 
     # `mypy` doesn't know about VOSK.
     import vosk  # type: ignore
