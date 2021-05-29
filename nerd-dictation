@@ -247,17 +247,27 @@ def from_words_to_digits_setup_once() -> Tuple[Set[str], Dict[str, Tuple[int, in
         for word, suffix in word_pairs:
             number_words[word] = (10 ** (idx * 3 or 2), 0, suffix)
 
+    # Needed for 'imply_single_unit'
+    valid_scale_words = set()
+    for idx, word_pairs in enumerate(scales):
+        for word, suffix in word_pairs:
+            valid_scale_words.add(word)
+
     valid_digit_words.update(number_words.keys())
     valid_digit_words.remove("and")
     valid_digit_words.remove("")
-    return valid_digit_words, number_words
+    return valid_digit_words, number_words, valid_scale_words
 
 
 # Originally based on: https://ao.gl/how-to-convert-numeric-words-into-numbers-using-python/
 # A module like class can't be instanced.
 class from_words_to_digits:
 
-    valid_digit_words, _number_words = from_words_to_digits_setup_once()
+    (
+        valid_digit_words,
+        _number_words,
+        _valid_scale_words,
+    ) = from_words_to_digits_setup_once()
 
     @staticmethod
     def _parse_number_as_series_of_units(
@@ -296,8 +306,10 @@ class from_words_to_digits:
     def parse_number(
         word_list: List[str],
         word_index: int,
+        imply_single_unit: bool = False,
     ) -> Tuple[int, str, int]:
         number_words = from_words_to_digits._number_words
+        valid_scale_words = from_words_to_digits._valid_scale_words
 
         # Check if this is a series of unit values, in this case it makes most sense to put the number in a series
         # (think reciting a phone number).
@@ -306,6 +318,9 @@ class from_words_to_digits:
             return ret
         del ret
 
+        if imply_single_unit:
+            only_scale = True
+
         # Primary loop.
         current = result = 0
         suffix = ""
@@ -313,11 +328,22 @@ class from_words_to_digits:
         while word_index < len(word_list):
             word_data = number_words.get(word_list[word_index])
             if word_data is None:
-                return result + current, suffix, word_index
                 # raise Exception('Illegal word: ' + word)
+                break
 
             # Use the index by the multiplier.
             scale, increment, suffix = word_data
+
+            if imply_single_unit:
+                if only_scale:
+                    if word_list[word_index] not in valid_scale_words:
+                        only_scale = False
+
+                    if only_scale and current == 0 and result == 0:
+                        current = 1 * scale
+                        word_index += 1
+                        break
+
             current = (current * scale) + increment
 
             # If larger than 100 then push for a round 2.
@@ -342,7 +368,7 @@ class from_words_to_digits:
         i_number_prev = -1
         while i < len(word_list):
             if word_list[i] in from_words_to_digits.valid_digit_words:
-                number, suffix, i_next = from_words_to_digits.parse_number(word_list, i)
+                number, suffix, i_next = from_words_to_digits.parse_number(word_list, i, imply_single_unit=True)
                 if i != i_next:
                     word_list[i:i_next] = [("{:,d}".format(number) if numbers_use_separator else str(number)) + suffix]
 
