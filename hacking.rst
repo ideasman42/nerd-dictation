@@ -26,8 +26,12 @@ Conventions
 Style
 -----
 
-- Auto formatting is handled with black by running: ``black nerd-dictator``
-- Ensure correct type annotations by running: ``mypy --strict nerd-dictator``.
+- Auto formatting is handled with black by running:
+  ``black nerd-dictator``
+- Ensure correct type annotations by running:
+  ``mypy --strict nerd-dictator``.
+- Check for errors with:
+  ``pylint nerd-dictation --disable=C0103,C0111,C0301,C0302,C0415,E0401,E0611,I1101,R0801,R0902,R0903,R0912,R0913,R0914,R0915,R1705,W0212,W0703``
 
 
 Technical Details
