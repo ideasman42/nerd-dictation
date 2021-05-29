@@ -226,11 +226,11 @@ def from_words_to_digits_setup_once() -> Tuple[Set[str], Dict[str, Tuple[int, in
 
     # Larger scales.
     scales = (
-        (("hundred", ""), ("hundreds", "s"), ("hundredth", "th")),
-        (("thousand", ""), ("thousands", "s"), ("thousandth", "th")),
-        (("million", ""), ("millions", "s"), ("millionth", "th")),
-        (("billion", ""), ("billions", "s"), ("billionth", "th")),
-        (("trillion", ""), ("trillions", "s"), ("trillionth", "th")),
+        ((("hundred", ""), ("hundreds", "s"), ("hundredth", "th")), 2),
+        ((("thousand", ""), ("thousands", "s"), ("thousandth", "th")), 3),
+        ((("million", ""), ("millions", "s"), ("millionth", "th")), 6),
+        ((("billion", ""), ("billions", "s"), ("billionth", "th")), 9),
+        ((("trillion", ""), ("trillions", "s"), ("trillionth", "th")), 12),
     )
 
     # Divisors.
@@ -243,13 +243,13 @@ def from_words_to_digits_setup_once() -> Tuple[Set[str], Dict[str, Tuple[int, in
     for idx, word_pairs in enumerate(tens):
         for word, suffix in word_pairs:
             number_words[word] = (1, idx * 10, suffix)
-    for idx, word_pairs in enumerate(scales):
+    for idx, (word_pairs, power) in enumerate(scales):
         for word, suffix in word_pairs:
-            number_words[word] = (10 ** (idx * 3 or 2), 0, suffix)
+            number_words[word] = (10 ** power, 0, suffix)
 
     # Needed for 'imply_single_unit'
     valid_scale_words = set()
-    for idx, word_pairs in enumerate(scales):
+    for idx, (word_pairs, power) in enumerate(scales):
         for word, suffix in word_pairs:
             valid_scale_words.add(word)
 
