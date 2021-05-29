@@ -62,6 +62,9 @@ USER_CONFIG = "nerd-dictation.py"
 # TODO: make this an option or use a more sophisticated method of recording.
 RECORD_OVERTIME = 0.3
 
+# The amount of time to sleep (in seconds) when idle and 'progressive_continuous' mode is enabled.
+PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE = 0.2
+
 # -----------------------------------------------------------------------------
 # General Utilities
 #
@@ -437,16 +440,20 @@ def text_from_vosk_pipe(
     *,
     vosk_model_dir: str,
     exit_fn: Callable[..., int],
+    process_fn: Callable[[str], str],
+    handle_fn: Callable[[str], None],
     timeout: float,
+    progressive: bool,
+    progressive_continuous: bool,
     pulse_device_name: str = "",
-) -> str:
+) -> bool:
 
     if not os.path.exists(vosk_model_dir):
         sys.stderr.write(
             "Please download the model from https://alphacephei.com/vosk/models and unpack it to %r.\n"
             % vosk_model_dir
         )
-        return ""
+        sys.exit(1)
 
     cmd = (
         "parec",
@@ -481,7 +488,51 @@ def text_from_vosk_pipe(
         timeout_time_prev = time.time()
 
     # Collect the output used when time-out is enabled.
-    text_list = []
+    if not (progressive and progressive_continuous):
+        text_list = []
+
+    # Set true if handle has been called.
+    handled_any = False
+
+    if progressive:
+        text_prev = ""
+
+    def handle_fn_wrapper(text: str, is_partial_arg: bool) -> None:
+        nonlocal handled_any
+        # Simple deferred text input, just accumulate values in a list (finish entering text on exit).
+        if not progressive:
+            if is_partial_arg:
+                return
+            text_list.append(text)
+            handled_any = True
+            return
+
+        # Progressive support (type as you speak).
+        nonlocal text_prev
+        if progressive_continuous:
+            text_curr = process_fn(text)
+        else:
+            text_curr = process_fn(" ".join(text_list + [text]))
+
+        if text_curr != text_prev:
+            match = min(len(text_curr), len(text_prev))
+            for i in range(min(len(text_curr), len(text_prev))):
+                if text_curr[i] != text_prev[i]:
+                    match = i
+                    break
+
+            # Use the ASCII code for back-space (if there is anything to back-space).
+            handle_fn(("\x08" * (len(text_prev) - match)) + text_curr[match:])
+
+            text_prev = text_curr
+
+        if not is_partial_arg:
+            if progressive_continuous:
+                text_prev = ""
+            else:
+                text_list.append(text)
+
+        handled_any = True
 
     while True:
         # -1=cancel, 0=continue, 1=finish.
@@ -495,20 +546,31 @@ def text_from_vosk_pipe(
             if data:
                 ok = rec.AcceptWaveform(data)
 
+                if ok:
+                    json_text = rec.Result()
+                    json_data = json.loads(json_text)
+                    text = json_data["text"]
+                    assert isinstance(text, str)
+                    if text:
+                        handle_fn_wrapper(text, False)
+                else:
+                    # Only for comparison, to detect change.
+                    # if use_timeout:
+                    json_text = rec.PartialResult()
+                    json_data = json.loads(json_text)
+                    text = json_data["partial"]
+                    if text:
+                        handle_fn_wrapper(text, True)
+                    else:
+                        if progressive and progressive_continuous:
+                            # Continuous' mode is intended to support being left running in the background.
+                            # As there was nothing to do sleep for 1/5th of a second, prevent excessive processor load.
+                            # This is fairly arbitrary but small enough for users not to notice a delay.
+                            time.sleep(PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE)
+
                 # Monitor the partial output.
                 # Finish if no changes are made for `timeout` seconds.
                 if use_timeout:
-                    if ok:
-                        json_text = rec.Result()
-                        json_data = json.loads(json_text)
-                        text = json_data["text"]
-                        assert isinstance(text, str)
-                        if text:
-                            text_list.append(text)
-                    else:
-                        # Only for comparison, to detect change.
-                        json_text = rec.PartialResult()
-
                     if json_text != timeout_text_prev:
                         timeout_text_prev = json_text
                         timeout_time_prev = time.time()
@@ -531,9 +593,12 @@ def text_from_vosk_pipe(
     text = json_data["text"]
     assert isinstance(text, str)
     if text:
-        text_list.append(text)
+        handle_fn_wrapper(text, False)
 
-    return " ".join(text_list)
+    if not progressive:
+        handle_fn(process_fn(" ".join(text_list)))
+
+    return handled_any
 
 
 def main_begin(
@@ -541,6 +606,8 @@ def main_begin(
     vosk_model_dir: str,
     path_to_cookie: str = "",
     pulse_device_name: str = "",
+    progressive: bool = False,
+    progressive_continuous: bool = False,
     full_sentence: bool = False,
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
@@ -591,6 +658,9 @@ def main_begin(
     touch_mtime = None
     use_overtime = RECORD_OVERTIME > 0.0 and timeout == 0.0
 
+    # Lazy loaded so recording can start 1st.
+    user_config = None
+
     def exit_fn() -> int:
         nonlocal touch_mtime
         if not os.path.exists(path_to_cookie):
@@ -609,65 +679,104 @@ def main_begin(
             return 1  # End.
         return 0  # Continue.
 
-    text = text_from_vosk_pipe(
-        vosk_model_dir=vosk_model_dir,
-        pulse_device_name=pulse_device_name,
-        timeout=timeout,
-        exit_fn=exit_fn,
-    )
+    process_fn_is_first = True
 
-    #
-    # Load the user configuration (when found).
-    #
-    user_config = user_config_as_module_or_none()
+    def process_fn(text: str) -> str:
+        nonlocal user_config
+        nonlocal process_fn_is_first
 
-    #
-    # User text post processing (when found).
-    #
-    if user_config is not None:
-        text = process_text_with_user_config(user_config, text)
+        #
+        # Load the user configuration (when found).
+        #
+        if process_fn_is_first:
+            user_config = user_config_as_module_or_none()
 
-    #
-    # Simple text post processing and capitalization.
-    #
-    text = process_text(
-        text,
-        full_sentence=full_sentence,
-        numbers_as_digits=numbers_as_digits,
-        numbers_use_separator=numbers_use_separator,
-    )
+        #
+        # User text post processing (when found).
+        #
+        if user_config is not None:
+            text = process_text_with_user_config(user_config, text)
 
-    if not text:
-        sys.stderr.write("No text found in the audio\n")
-        # Avoid continuing punctuation from where this recording (which recorded nothing) left off.
-        touch(path_to_cookie)
-        return
+        #
+        # Simple text post processing and capitalization.
+        #
+        text = process_text(
+            text,
+            full_sentence=full_sentence,
+            numbers_as_digits=numbers_as_digits,
+            numbers_use_separator=numbers_use_separator,
+        )
 
-    if is_run_on:
-        if full_sentence:
-            text = ". " + text
-        else:
-            text = ", " + text
+        if is_run_on:
+            # This is a signal that the end of the sentence has been reached.
+            if full_sentence:
+                text = ". " + text
+            else:
+                text = ", " + text
+
+        process_fn_is_first = False
+
+        return text
 
     #
     # Handled the resulting text
     #
     if output == "SIMULATE_INPUT":
-        cmd = (
-            "xdotool",
-            "type",
-            # Use a value higher than twelve so the characters don't get skipped (tsk!).
-            "--delay",
-            "30",
-            text,
-        )
-        subprocess.check_output(cmd).decode("utf-8")
+
+        def handle_fn(text: str) -> None:
+            import re
+
+            # Back-space character.
+            for text_block in re.split("(\x08)", text):
+                if not text_block:
+                    pass
+                elif text_block.startswith("\x08"):
+                    cmd = (
+                        "xdotool",
+                        "key",
+                        "--clearmodifiers",
+                        "--delay",
+                        "10",
+                        *(("BackSpace",) * len(text_block)),
+                    )
+                    subprocess.check_output(cmd).decode("utf-8")
+                else:
+                    cmd = (
+                        "xdotool",
+                        "type",
+                        "--clearmodifiers",
+                        # Use a value higher than twelve so the characters don't get skipped (tsk!).
+                        "--delay",
+                        "10",
+                        text_block,
+                    )
+                    subprocess.check_output(cmd).decode("utf-8")
 
     elif output == "STDOUT":
-        sys.stdout.write(text)
+
+        def handle_fn(text: str) -> None:
+            sys.stdout.write(text)
+
     else:
         # Unreachable.
         assert False
+
+    found_any = text_from_vosk_pipe(
+        vosk_model_dir=vosk_model_dir,
+        pulse_device_name=pulse_device_name,
+        timeout=timeout,
+        progressive=progressive,
+        progressive_continuous=progressive_continuous,
+        exit_fn=exit_fn,
+        process_fn=process_fn,
+        handle_fn=handle_fn,
+    )
+
+    if not found_any:
+        sys.stderr.write("No text found in the audio\n")
+        # Avoid continuing punctuation from where this recording (which recorded nothing) left off.
+        touch(path_to_cookie)
+        return
 
 
 def main_end(
@@ -730,6 +839,31 @@ This creates the directory used to store internal data, so other commands such a
         help=(
             "The name of the pulse-audio device to use for recording.\n"
             'See the output of "pactl list" to find device names.'
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--defer-output",
+        dest="defer_output",
+        default=False,
+        action="store_true",
+        help=(
+            "When enabled, output is deferred until exiting.\n"
+            "This prevents text being typed during speech (implied with ``--output=STDOUT``)"
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--continuous",
+        dest="progressive_continuous",
+        default=False,
+        action="store_true",
+        help=(
+            "Enable this option, when you intend to keep the dictation process enabled for extended periods of time.\n"
+            "without this enabled, the entirety of this dictation session will be processed on every update.\n"
+            "Only used when ``--defer-output`` is disabled."
         ),
         required=False,
     )
@@ -819,6 +953,8 @@ This creates the directory used to store internal data, so other commands such a
             path_to_cookie=args.path_to_cookie,
             vosk_model_dir=args.vosk_model_dir,
             pulse_device_name=args.pulse_device_name,
+            progressive=not (args.defer_output or args.output == "STDOUT"),
+            progressive_continuous=args.progressive_continuous,
             full_sentence=args.full_sentence,
             numbers_as_digits=args.numbers_as_digits,
             numbers_use_separator=args.numbers_use_separator,
