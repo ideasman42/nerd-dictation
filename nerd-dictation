@@ -180,7 +180,7 @@ def user_config_as_module_or_none() -> Optional[ModuleType]:
 # Note this could be extracted into it's own small library.
 
 
-def from_words_to_digits_setup_once() -> Tuple[Set[str], Dict[str, Tuple[int, int, str]]]:
+def from_words_to_digits_setup_once() -> Tuple[Dict[str, Tuple[int, int, str, bool]], Set[str], Set[str], Set[str]]:
 
     number_words = {}
     # A set of words that can be used to start numeric expressions.
@@ -280,7 +280,12 @@ def from_words_to_digits_setup_once() -> Tuple[Set[str], Dict[str, Tuple[int, in
     valid_digit_words.update(number_words.keys())
     valid_digit_words.remove("and")
     valid_digit_words.remove("")
-    return valid_digit_words, number_words, valid_unit_words, valid_scale_words
+    return (
+        number_words,
+        valid_digit_words,
+        valid_unit_words,
+        valid_scale_words,
+    )
 
 
 # Originally based on: https://ao.gl/how-to-convert-numeric-words-into-numbers-using-python/
@@ -288,10 +293,10 @@ def from_words_to_digits_setup_once() -> Tuple[Set[str], Dict[str, Tuple[int, in
 class from_words_to_digits:
 
     (
-        valid_digit_words,
         _number_words,
-        _valid_unit_words,
-        _valid_scale_words,
+        valid_digit_words,
+        valid_unit_words,
+        valid_scale_words,
     ) = from_words_to_digits_setup_once()
 
     @staticmethod
@@ -337,8 +342,8 @@ class from_words_to_digits:
         imply_single_unit: bool = False,
     ) -> Tuple[int, str, int]:
         number_words = from_words_to_digits._number_words
-        valid_scale_words = from_words_to_digits._valid_scale_words
-        valid_unit_words = from_words_to_digits._valid_unit_words
+        valid_scale_words = from_words_to_digits.valid_scale_words
+        valid_unit_words = from_words_to_digits.valid_unit_words
 
         # Check if this is a series of unit values, in this case it makes most sense to put the number in a series
         # (think reciting a phone number).
