@@ -849,6 +849,7 @@ def argparse_generic_command_cookie(subparse: argparse.ArgumentParser) -> None:
         dest="path_to_cookie",
         default="",
         type=str,
+        metavar="FILE_PATH",
         help="Location for writing a temporary cookie (this file is monitored to begin/end dictation).",
         required=False,
     )
@@ -871,6 +872,7 @@ This creates the directory used to store internal data, so other commands such a
         default="",
         dest="vosk_model_dir",
         type=str,
+        metavar="DIR",
         help=("Path to the VOSK model, see: https://alphacephei.com/vosk/models"),
         required=False,
     )
@@ -880,6 +882,7 @@ This creates the directory used to store internal data, so other commands such a
         dest="pulse_device_name",
         default="",
         type=str,
+        metavar="IDENTIFIER",
         help=(
             "The name of the pulse-audio device to use for recording.\n"
             'See the output of "pactl list" to find device names.'
@@ -893,7 +896,7 @@ This creates the directory used to store internal data, so other commands such a
         default=False,
         action="store_true",
         help=(
-            "When enabled, output is deferred until exiting.\n"
+            "When enabled, output is deferred until exiting.\n\n"
             "This prevents text being typed during speech (implied with ``--output=STDOUT``)"
         ),
         required=False,
@@ -917,8 +920,9 @@ This creates the directory used to store internal data, so other commands such a
         dest="timeout",
         default=0.0,
         type=float,
+        metavar="SECONDS",
         help=(
-            "Time out recording when no speeches processed for N seconds.\n"
+            "Time out recording when no speech is processed for the time in seconds.\n"
             "This can be used to avoid having to explicitly exit "
             "(zero disables)."
         ),
@@ -930,6 +934,7 @@ This creates the directory used to store internal data, so other commands such a
         dest="punctuate_from_previous_timeout",
         default=0.0,
         type=float,
+        metavar="SECONDS",
         help=(
             "The time-out in seconds for detecting the state of dictation from the previous recording, "
             "this can be useful so punctuation it is added before entering the dictation"
@@ -943,7 +948,11 @@ This creates the directory used to store internal data, so other commands such a
         dest="full_sentence",
         default=False,
         action="store_true",
-        help=("Capitalize the first character.\n" "This is also used to add either a comma or a full stop."),
+        help=(
+            "Capitalize the first character.\n"
+            "This is also used to add either a comma or a full stop when dictation is performed under the\n"
+            "``--punctuate-from-previous-timeout`` value."
+        ),
         required=False,
     )
 
@@ -977,7 +986,7 @@ This creates the directory used to store internal data, so other commands such a
             "- ``SIMULATE_INPUT`` simulate keystrokes (default).\n"
             "- ``STDOUT`` print the result to the standard output.\n"
             "  Be sure only to handle text from the standard output\n"
-            "  as the standard error may be used for reporting any problems that occur."
+            "  as the standard error may be used for reporting any problems that occur.\n"
         ),
         required=False,
     )
