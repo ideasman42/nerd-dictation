@@ -973,7 +973,8 @@ This creates the directory used to store internal data, so other commands such a
         metavar="OUTPUT_METHOD",
         help=(
             "Method used to at put the result of speech to text.\n"
-            "- ``TYPE`` simulate keystrokes (default).\n"
+            "\n"
+            "- ``SIMULATE_INPUT`` simulate keystrokes (default).\n"
             "- ``STDOUT`` print the result to the standard output.\n"
             "  Be sure only to handle text from the standard output\n"
             "  as the standard error may be used for reporting any problems that occur."
