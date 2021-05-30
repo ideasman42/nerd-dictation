@@ -142,6 +142,109 @@ Language Model
    Note that ``--vosk-model-dir=PATH`` can be used to override the default.
 
 
+Command Line Arguments
+======================
+
+.. BEGIN HELP TEXT
+
+Output of ``nerd-dictation --help``
+
+usage::
+
+       nerd-dictation [-h]  ...
+
+This is a utility that activates text to speech in Linux.
+While it could use any system currently it uses the VOSK-API.
+
+positional arguments:
+
+    :begin:             Begin dictation.
+    :end:               End dictation.
+    :cancel:            Cancel dictation.
+
+optional arguments:
+  -h, --help          show this help message and exit
+
+Subcommand: ``begin``
+---------------------
+
+usage::
+
+       nerd-dictation begin [-h] [--cookie FILE_PATH] [--vosk-model-dir DIR]
+                            [--pulse-device-name IDENTIFIER] [--defer-output]
+                            [--continuous] [--timeout SECONDS]
+                            [--punctuate-from-previous-timeout SECONDS]
+                            [--full-sentence] [--numbers-as-digits]
+                            [--numbers-use-separator] [--output OUTPUT_METHOD]
+                            [- ...]
+
+This creates the directory used to store internal data, so other commands such as sync can be performed.
+
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --cookie FILE_PATH    Location for writing a temporary cookie (this file is monitored to begin/end dictation).
+  --vosk-model-dir DIR  Path to the VOSK model, see: https://alphacephei.com/vosk/models
+  --pulse-device-name IDENTIFIER
+                        The name of the pulse-audio device to use for recording.
+                        See the output of "pactl list" to find device names.
+  --defer-output        When enabled, output is deferred until exiting.
+
+                        This prevents text being typed during speech (implied with ``--output=STDOUT``)
+  --continuous          Enable this option, when you intend to keep the dictation process enabled for extended periods of time.
+                        without this enabled, the entirety of this dictation session will be processed on every update.
+                        Only used when ``--defer-output`` is disabled.
+  --timeout SECONDS     Time out recording when no speech is processed for the time in seconds.
+                        This can be used to avoid having to explicitly exit (zero disables).
+  --punctuate-from-previous-timeout SECONDS
+                        The time-out in seconds for detecting the state of dictation from the previous recording, this can be useful so punctuation it is added before entering the dictation(zero disables).
+  --full-sentence       Capitalize the first character.
+                        This is also used to add either a comma or a full stop when dictation is performed under the
+                        ``--punctuate-from-previous-timeout`` value.
+  --numbers-as-digits   Convert numbers into digits instead of using whole words.
+  --numbers-use-separator
+                        Use a comma separators for numbers.
+  --output OUTPUT_METHOD
+                        Method used to at put the result of speech to text.
+
+                        - ``SIMULATE_INPUT`` simulate keystrokes (default).
+                        - ``STDOUT`` print the result to the standard output.
+                          Be sure only to handle text from the standard output
+                          as the standard error may be used for reporting any problems that occur.
+  ``-`` ...             End argument parsing.
+                        This can be used for user defined arguments which configuration scripts may read from the ``sys.argv``.
+
+Subcommand: ``end``
+-------------------
+
+usage::
+
+       nerd-dictation end [-h] [--cookie FILE_PATH]
+
+This ends dictation, causing the text to be typed in.
+
+
+optional arguments:
+  -h, --help          show this help message and exit
+  --cookie FILE_PATH  Location for writing a temporary cookie (this file is monitored to begin/end dictation).
+
+Subcommand: ``cancel``
+----------------------
+
+usage::
+
+       nerd-dictation cancel [-h] [--cookie FILE_PATH]
+
+This cancels dictation.
+
+
+optional arguments:
+  -h, --help          show this help message and exit
+  --cookie FILE_PATH  Location for writing a temporary cookie (this file is monitored to begin/end dictation).
+
+.. END HELP TEXT
+
+
 Details
 =======
 
