@@ -3,6 +3,7 @@
 Changelog
 #########
 
+- 2021/05/30: Fix adding numbers with "and", "one and two" now resolve to "1 and 2" not "3".
 - 2021/05/30: Add numeric scales up to 'centillion' (10**303).
 - 2021/05/30: Fix error converting isolated scales to numerals so ``thousands`` becomes ``1000s``.
 - 2021/05/29: Support typing during dictation (disable with ``--defer-output``).
