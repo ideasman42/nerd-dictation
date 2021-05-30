@@ -819,6 +819,9 @@ def main_begin(
                     )
                     subprocess.check_output(cmd).decode("utf-8")
                 else:
+                    # `xdotool` has a problem where it mistakes text for arguments.
+                    # '-' must be typed in individually (sigh!).
+                    # Write to the `stdin` instead to work around this problem.
                     cmd = (
                         "xdotool",
                         "type",
@@ -826,9 +829,11 @@ def main_begin(
                         # Use a value higher than twelve so the characters don't get skipped (tsk!).
                         "--delay",
                         "10",
-                        text_block,
+                        "--file",
+                        "-",
                     )
-                    subprocess.check_output(cmd).decode("utf-8")
+                    ps = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+                    ps.communicate(input=text_block.encode("utf-8"))
 
     elif output == "STDOUT":
 
