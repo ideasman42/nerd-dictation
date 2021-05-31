@@ -2,7 +2,7 @@
 Nerd Dictation
 ##############
 
-*Offline Speech to Text for Desktop Linux.*
+*Offline Speech to Text for Desktop Linux.* - See `demo video <https://www.youtube.com/watch?v=T7sR-4DFhpQ>`__.
 
 This is a utility that provides simple access speech to text for using in Linux
 without being tied to a desktop environment.
