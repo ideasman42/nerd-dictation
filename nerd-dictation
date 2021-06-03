@@ -27,7 +27,6 @@ While it could use any system currently it uses the VOSK-API.
 
 # All built in modules.
 import argparse
-import json
 import os
 import stat
 import subprocess
@@ -530,6 +529,8 @@ def text_from_vosk_pipe(
     progressive_continuous: bool,
     pulse_device_name: str = "",
 ) -> bool:
+    # Delay some imports until recording has started to avoid minor delays.
+    import json
 
     if not os.path.exists(vosk_model_dir):
         sys.stderr.write(
