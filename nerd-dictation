@@ -64,6 +64,9 @@ RECORD_OVERTIME = 0.3
 # The amount of time to sleep (in seconds) when idle and 'progressive_continuous' mode is enabled.
 PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE = 0.2
 
+# The sample right to use for recording.
+RECORD_SAMPLE_RATE = 44100
+
 # -----------------------------------------------------------------------------
 # General Utilities
 #
@@ -542,7 +545,7 @@ def text_from_vosk_pipe(
     cmd = (
         "parec",
         "--record",
-        "--rate=44100",
+        "--rate=%d" % RECORD_SAMPLE_RATE,
         "--channels=1",
         *(("--device=%s" % pulse_device_name,) if pulse_device_name else ()),
         "--format=s16ne",
@@ -562,7 +565,7 @@ def text_from_vosk_pipe(
     vosk.SetLogLevel(-1)
 
     model = vosk.Model(vosk_model_dir)
-    rec = vosk.KaldiRecognizer(model, 44100)
+    rec = vosk.KaldiRecognizer(model, RECORD_SAMPLE_RATE)
     # 1mb (allow for loading the model to take some time).
     block_size = 104_8576
 
