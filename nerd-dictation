@@ -580,6 +580,9 @@ def text_from_vosk_pipe(
     if progressive:
         text_prev = ""
 
+    # Track this to prevent excessive load when the "partial" result doesn't change.
+    json_text_partial_prev = ""
+
     def handle_fn_wrapper(text: str, is_partial_arg: bool) -> None:
         nonlocal handled_any
         # Simple deferred text input, just accumulate values in a list (finish entering text on exit).
@@ -631,6 +634,7 @@ def text_from_vosk_pipe(
 
                 if ok:
                     json_text = rec.Result()
+                    json_text_partial_prev = ""
                     json_data = json.loads(json_text)
                     text = json_data["text"]
                     assert isinstance(text, str)
@@ -640,16 +644,21 @@ def text_from_vosk_pipe(
                     # Only for comparison, to detect change.
                     # if use_timeout:
                     json_text = rec.PartialResult()
-                    json_data = json.loads(json_text)
-                    text = json_data["partial"]
-                    if text:
-                        handle_fn_wrapper(text, True)
-                    else:
-                        if progressive and progressive_continuous:
-                            # Continuous' mode is intended to support being left running in the background.
-                            # As there was nothing to do sleep for 1/5th of a second, prevent excessive processor load.
-                            # This is fairly arbitrary but small enough for users not to notice a delay.
-                            time.sleep(PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE)
+                    # Without this, there are *many* calls with the same partial text.
+                    if json_text_partial_prev != json_text:
+                        json_text_partial_prev = json_text
+
+                        json_data = json.loads(json_text)
+                        text = json_data["partial"]
+                        if text:
+                            handle_fn_wrapper(text, True)
+                        else:
+                            if progressive and progressive_continuous:
+                                # Continuous' mode is intended to support being left running in the background.
+                                # As there was nothing to do sleep for 1/5th of a second,
+                                # prevents excessive processor load.
+                                # This is fairly arbitrary but small enough for users not to notice a delay.
+                                time.sleep(PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE)
 
                 # Monitor the partial output.
                 # Finish if no changes are made for `timeout` seconds.
