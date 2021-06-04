@@ -33,7 +33,8 @@ import subprocess
 import sys
 import tempfile
 import time
-
+import logging
+logging.basicConfig(level=logging.INFO)
 # Types.
 from typing import (
     Dict,
@@ -783,6 +784,7 @@ def main_begin(
         #
         if process_fn_is_first:
             user_config = user_config_as_module_or_none()
+            apply_layout()
 
         #
         # User text post processing (when found).
@@ -1118,6 +1120,27 @@ def argparse_create() -> argparse.ArgumentParser:
 
     return parser
 
+def apply_layout():
+    # workaround issue from xdotool. Sometimes, charaters are send without applying the local layout
+    # we should set again the layout
+    cmd = (
+        "setxkbmap",
+        "-query",
+    )
+    xkbquery = subprocess.run(cmd, stdout=subprocess.PIPE)
+    kbmap = ""
+    if xkbquery.returncode == 0:
+        for line in xkbquery.stdout.decode("utf-8").splitlines():
+            words = line.split(":")
+            if words[0].strip() == "layout":
+                kbmap = words[1].strip()
+        if kbmap != "":
+            logging.info(f"Applying keyboard layout {kbmap}")
+            cmd = (
+                "setxkbmap",
+                kbmap,
+            )
+            subprocess.check_output(cmd)
 
 def main(argv: Optional[List[str]] = None) -> None:
     parser = argparse_create()
