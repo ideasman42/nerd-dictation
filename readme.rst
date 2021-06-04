@@ -173,6 +173,7 @@ usage::
        nerd-dictation begin [-h] [--cookie FILE_PATH] [--vosk-model-dir DIR]
                             [--pulse-device-name IDENTIFIER] [--defer-output]
                             [--continuous] [--timeout SECONDS]
+                            [--delay-exit SECONDS]
                             [--punctuate-from-previous-timeout SECONDS]
                             [--full-sentence] [--numbers-as-digits]
                             [--numbers-use-separator] [--output OUTPUT_METHOD]
@@ -196,6 +197,9 @@ optional arguments:
                         Only used when ``--defer-output`` is disabled.
   --timeout SECONDS     Time out recording when no speech is processed for the time in seconds.
                         This can be used to avoid having to explicitly exit (zero disables).
+  --delay-exit SECONDS  The time to continue running after an exit request.
+                        this can be useful so "push to talk" setups can be released while you finish speaking
+                        (zero disables).
   --punctuate-from-previous-timeout SECONDS
                         The time-out in seconds for detecting the state of dictation from the previous recording, this can be useful so punctuation it is added before entering the dictation(zero disables).
   --full-sentence       Capitalize the first character.

@@ -54,12 +54,6 @@ USER_CONFIG_DIR = "nerd-dictation"
 
 USER_CONFIG = "nerd-dictation.py"
 
-# Extra time to record (in seconds).
-# NOTE: ideally this would not be necessary, however buffering data from the pipe means
-# some extra delay is needed.
-#
-# TODO: make this an option or use a more sophisticated method of recording.
-RECORD_OVERTIME = 0.3
 
 # The amount of time to sleep (in seconds) when idle and 'progressive_continuous' mode is enabled.
 PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE = 0.2
@@ -708,6 +702,7 @@ def main_begin(
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
     timeout: float = 0.0,
+    delay_exit: float = 0.0,
     punctuate_from_previous_timeout: float = 0.0,
     output: str = "TYPE",
 ) -> None:
@@ -752,7 +747,7 @@ def main_begin(
     #
 
     touch_mtime = None
-    use_overtime = RECORD_OVERTIME > 0.0 and timeout == 0.0
+    use_overtime = delay_exit > 0.0 and timeout == 0.0
 
     # Lazy loaded so recording can start 1st.
     user_config = None
@@ -763,14 +758,14 @@ def main_begin(
             return -1  # Cancel.
         if file_mtime_or_none(path_to_cookie) != cookie_timestamp:
 
-            # Implement `RECORD_OVERTIME` workaround.
+            # Implement `delay_exit` workaround.
             if use_overtime:
                 if touch_mtime is None:
                     touch_mtime = time.time()
-                if time.time() - touch_mtime < RECORD_OVERTIME:
-                    # Continue until `RECORD_OVERTIME` is reached.
+                if time.time() - touch_mtime < delay_exit:
+                    # Continue until `delay_exit` is reached.
                     return 0
-            # End `RECORD_OVERTIME`.
+            # End `delay_exit`.
 
             return 1  # End.
         return 0  # Continue.
@@ -983,6 +978,20 @@ This creates the directory used to store internal data, so other commands such a
     )
 
     subparse.add_argument(
+        "--delay-exit",
+        dest="delay_exit",
+        default=0.0,
+        type=float,
+        metavar="SECONDS",
+        help=(
+            "The time to continue running after an exit request.\n"
+            'this can be useful so "push to talk" setups can be released while you finish speaking\n'
+            "(zero disables)."
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
         "--punctuate-from-previous-timeout",
         dest="punctuate_from_previous_timeout",
         default=0.0,
@@ -1066,6 +1075,7 @@ This creates the directory used to store internal data, so other commands such a
             numbers_as_digits=args.numbers_as_digits,
             numbers_use_separator=args.numbers_use_separator,
             timeout=args.timeout,
+            delay_exit=args.delay_exit,
             punctuate_from_previous_timeout=args.punctuate_from_previous_timeout,
             output=args.output,
         ),
