@@ -4,6 +4,7 @@ Changelog
 #########
 
 - 2021/06/07: Add ``--delay-exit``, convenient when pushed to talk is used.
+- 2021/06/07: Improve recording logic to capture more of the end of the recording before exiting.
 - 2021/05/30: Fix error with ``xdotool`` mistaking text as arguments.
 - 2021/05/30: Fix adding numbers with "and", "one and two" now resolve to "1 and 2" not "3".
 - 2021/05/30: Add numeric scales up to 'centillion' (10**303).

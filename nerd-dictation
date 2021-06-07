@@ -618,60 +618,62 @@ def text_from_vosk_pipe(
 
         handled_any = True
 
-    while True:
+    # Use code to delay exiting, allowing reading the recording buffer to catch-up.
+    code = 0
+
+    while code == 0:
         # -1=cancel, 0=continue, 1=finish.
         code = exit_fn()
 
-        if code != -1:
-            # Mostly the data read is quite small (under 1k).
-            # Only the 1st entry in the loop reads a lot of data due to the time it takes to initialize the VOSK module.
-            data = stdout.read(block_size)
+        # Mostly the data read is quite small (under 1k).
+        # Only the 1st entry in the loop reads a lot of data due to the time it takes to initialize the VOSK module.
+        data = stdout.read(block_size)
 
-            if data:
-                ok = rec.AcceptWaveform(data)
+        if data:
+            ok = rec.AcceptWaveform(data)
 
-                if ok:
-                    json_text = rec.Result()
-                    json_text_partial_prev = ""
+            if ok:
+                json_text = rec.Result()
+                json_text_partial_prev = ""
+                json_data = json.loads(json_text)
+                text = json_data["text"]
+                assert isinstance(text, str)
+                if text:
+                    handle_fn_wrapper(text, False)
+            else:
+                # Only for comparison, to detect change.
+                # if use_timeout:
+                json_text = rec.PartialResult()
+                # Without this, there are *many* calls with the same partial text.
+                if json_text_partial_prev != json_text:
+                    json_text_partial_prev = json_text
+
                     json_data = json.loads(json_text)
-                    text = json_data["text"]
-                    assert isinstance(text, str)
+                    text = json_data["partial"]
                     if text:
-                        handle_fn_wrapper(text, False)
-                else:
-                    # Only for comparison, to detect change.
-                    # if use_timeout:
-                    json_text = rec.PartialResult()
-                    # Without this, there are *many* calls with the same partial text.
-                    if json_text_partial_prev != json_text:
-                        json_text_partial_prev = json_text
+                        handle_fn_wrapper(text, True)
+                    else:
+                        if progressive and progressive_continuous:
+                            # Continuous' mode is intended to support being left running in the background.
+                            # As there was nothing to do sleep for 1/5th of a second,
+                            # prevents excessive processor load.
+                            # This is fairly arbitrary but small enough for users not to notice a delay.
+                            time.sleep(PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE)
 
-                        json_data = json.loads(json_text)
-                        text = json_data["partial"]
-                        if text:
-                            handle_fn_wrapper(text, True)
-                        else:
-                            if progressive and progressive_continuous:
-                                # Continuous' mode is intended to support being left running in the background.
-                                # As there was nothing to do sleep for 1/5th of a second,
-                                # prevents excessive processor load.
-                                # This is fairly arbitrary but small enough for users not to notice a delay.
-                                time.sleep(PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE)
-
-                # Monitor the partial output.
-                # Finish if no changes are made for `timeout` seconds.
-                if use_timeout:
-                    if json_text != timeout_text_prev:
-                        timeout_text_prev = json_text
-                        timeout_time_prev = time.time()
-                    elif time.time() - timeout_time_prev > timeout:
+            # Monitor the partial output.
+            # Finish if no changes are made for `timeout` seconds.
+            if use_timeout:
+                if json_text != timeout_text_prev:
+                    timeout_text_prev = json_text
+                    timeout_time_prev = time.time()
+                elif time.time() - timeout_time_prev > timeout:
+                    if code == 0:
                         code = 1  # The time was exceeded, exit!
 
-        if code != 0:
-            import signal
+    # Close the recording process.
+    import signal
 
-            os.kill(ps.pid, signal.SIGINT)
-            break
+    os.kill(ps.pid, signal.SIGINT)
 
     if code == -1:
         sys.stderr.write("Text input canceled!\n")
