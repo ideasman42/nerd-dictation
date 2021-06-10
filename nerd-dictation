@@ -707,7 +707,7 @@ def main_begin(
     timeout: float = 0.0,
     punctuate_from_previous_timeout: float = 0.0,
     output: str = "TYPE",
-    input_method: str = "xdotool",
+    input_method: str = "auto",
 ) -> None:
     """
     Initialize audio recording, then full text to speech conversion can take place.
@@ -730,12 +730,13 @@ def main_begin(
 
     if input_method == "pynput":
         try:
-            from pynput.keyboard import Key, Controller
+            from pynput.keyboard import Key, Controller  # type: ignore
+
             keyboard = Controller()
         except ImportError:
             sys.stderr.write("Module 'pynput' is not installed. Defaulting input method to xdotool.")
             input_method = "xdotool"
-    
+
     is_run_on = False
     if punctuate_from_previous_timeout > 0.0:
         age_in_seconds: Optional[float] = None
@@ -1072,11 +1073,13 @@ This creates the directory used to store internal data, so other commands such a
     subparse.add_argument(
         "--simulate-input-method",
         dest="input_method",
-        default="xdotool",
-        choices=("xdotool", "pynput"),
-        help=("Choose the tool to simulate keyboard inputs. Valid choices are:\n"
-            "- ``xdotool`` (default)\n"
-            "- ``pynput``\n"),
+        default="auto",
+        choices=("auto", "pynput"),
+        help=(
+            "Choose the tool to simulate keyboard inputs. Valid choices are:\n"
+            "- ``auto`` uses xdotool with Xorg (default)\n"
+            "- ``pynput``\n"
+        ),
         required=False,
     )
 
@@ -1093,7 +1096,7 @@ This creates the directory used to store internal data, so other commands such a
             timeout=args.timeout,
             punctuate_from_previous_timeout=args.punctuate_from_previous_timeout,
             output=args.output,
-            input_method=args.input_method
+            input_method=args.input_method,
         ),
     )
 
