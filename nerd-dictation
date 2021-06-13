@@ -428,7 +428,7 @@ class from_words_to_digits:
                     if (i_number_prev != -1) and (i_number_prev + 1 != i):
                         words_between = tuple(word_list[i_number_prev + 1 : i])
                         found = True
-                        # While other  more here for now this is enough.
+                        # While more could be added here, for now this is enough.
                         if words_between == ("point",):
                             word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + "." + word_list[i]]
                         elif words_between == ("minus",):
