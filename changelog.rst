@@ -3,6 +3,8 @@
 Changelog
 #########
 
+- 2021/06/25: Add ``--idle-time``, optionally idle to avoid high CPU usage for no perceptual gain (fixes #6).
+- 2021/06/07: Add ``--delay-exit``, convenient when pushed to talk is used.
 - 2021/06/07: Add ``--delay-exit``, convenient when pushed to talk is used.
 - 2021/06/07: Improve recording logic to capture more of the end of the recording before exiting.
 - 2021/05/30: Fix error with ``xdotool`` mistaking text as arguments.

@@ -55,9 +55,6 @@ USER_CONFIG_DIR = "nerd-dictation"
 USER_CONFIG = "nerd-dictation.py"
 
 
-# The amount of time to sleep (in seconds) when idle and 'progressive_continuous' mode is enabled.
-PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE = 0.2
-
 # The sample right to use for recording.
 RECORD_SAMPLE_RATE = 44100
 
@@ -524,6 +521,7 @@ def text_from_vosk_pipe(
     process_fn: Callable[[str], str],
     handle_fn: Callable[[str], None],
     timeout: float,
+    idle_time: float,
     progressive: bool,
     progressive_continuous: bool,
     pulse_device_name: str = "",
@@ -623,9 +621,25 @@ def text_from_vosk_pipe(
     # Use code to delay exiting, allowing reading the recording buffer to catch-up.
     code = 0
 
+    if idle_time > 0.0:
+        idle_time_prev = time.time()
+
     while code == 0:
         # -1=cancel, 0=continue, 1=finish.
         code = exit_fn()
+
+        if idle_time > 0.0:
+            # Subtract processing time from the previous loop.
+            # Skip idling in the event dictation can't keep up with the recording.
+            idle_time_curr = time.time()
+            idle_time_test = idle_time - (idle_time_curr - idle_time_prev)
+            if idle_time_test > 0.0:
+                # Prevents excessive processor load.
+                print(idle_time_test)
+                time.sleep(idle_time_test)
+                idle_time_prev = time.time()
+            else:
+                idle_time_prev = idle_time_curr
 
         # Mostly the data read is quite small (under 1k).
         # Only the 1st entry in the loop reads a lot of data due to the time it takes to initialize the VOSK module.
@@ -654,13 +668,6 @@ def text_from_vosk_pipe(
                     text = json_data["partial"]
                     if text:
                         handle_fn_wrapper(text, True)
-                    else:
-                        if progressive and progressive_continuous:
-                            # Continuous' mode is intended to support being left running in the background.
-                            # As there was nothing to do sleep for 1/5th of a second,
-                            # prevents excessive processor load.
-                            # This is fairly arbitrary but small enough for users not to notice a delay.
-                            time.sleep(PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE)
 
             # Monitor the partial output.
             # Finish if no changes are made for `timeout` seconds.
@@ -706,6 +713,7 @@ def main_begin(
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
     timeout: float = 0.0,
+    idle_time: float = 0.0,
     delay_exit: float = 0.0,
     punctuate_from_previous_timeout: float = 0.0,
     output: str = "TYPE",
@@ -861,6 +869,7 @@ def main_begin(
         vosk_model_dir=vosk_model_dir,
         pulse_device_name=pulse_device_name,
         timeout=timeout,
+        idle_time=idle_time,
         progressive=progressive,
         progressive_continuous=progressive_continuous,
         exit_fn=exit_fn,
@@ -982,6 +991,21 @@ This creates the directory used to store internal data, so other commands such a
     )
 
     subparse.add_argument(
+        "--idle-time",
+        dest="idle_time",
+        default=0.1,
+        type=float,
+        metavar="SECONDS",
+        help=(
+            "Time to idle between processing audio from the recording.\n"
+            "Setting to zero is the most responsive at the cost of high CPU usage.\n"
+            "The default value is 0.1 (processing 10 times a second), which is quite responsive in practice\n"
+            "(the maximum value is clamped to 0.5)"
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
         "--delay-exit",
         dest="delay_exit",
         default=0.0,
@@ -1079,6 +1103,7 @@ This creates the directory used to store internal data, so other commands such a
             numbers_as_digits=args.numbers_as_digits,
             numbers_use_separator=args.numbers_use_separator,
             timeout=args.timeout,
+            idle_time=min(args.idle_time, 0.5),
             delay_exit=args.delay_exit,
             punctuate_from_previous_timeout=args.punctuate_from_previous_timeout,
             output=args.output,

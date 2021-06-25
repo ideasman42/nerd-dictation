@@ -173,7 +173,7 @@ usage::
        nerd-dictation begin [-h] [--cookie FILE_PATH] [--vosk-model-dir DIR]
                             [--pulse-device-name IDENTIFIER] [--defer-output]
                             [--continuous] [--timeout SECONDS]
-                            [--delay-exit SECONDS]
+                            [--idle-time SECONDS] [--delay-exit SECONDS]
                             [--punctuate-from-previous-timeout SECONDS]
                             [--full-sentence] [--numbers-as-digits]
                             [--numbers-use-separator] [--output OUTPUT_METHOD]
@@ -197,6 +197,10 @@ optional arguments:
                         Only used when ``--defer-output`` is disabled.
   --timeout SECONDS     Time out recording when no speech is processed for the time in seconds.
                         This can be used to avoid having to explicitly exit (zero disables).
+  --idle-time SECONDS   Time to idle between processing audio from the recording.
+                        Setting to zero is the most responsive at the cost of high CPU usage.
+                        The default value is 0.1 (processing 10 times a second), which is quite responsive in practice
+                        (the maximum value is clamped to 0.5)
   --delay-exit SECONDS  The time to continue running after an exit request.
                         this can be useful so "push to talk" setups can be released while you finish speaking
                         (zero disables).
