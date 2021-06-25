@@ -111,6 +111,8 @@ def execfile(filepath: str, mod: Optional[ModuleType] = None) -> Optional[Module
 
     mod_name = "__main__"
     mod_spec = importlib.util.spec_from_file_location(mod_name, filepath)
+    if mod_spec is None:
+        raise Exception("Unable to retrieve the module-spec from %r" % filepath)
     if mod is None:
         mod = importlib.util.module_from_spec(mod_spec)
 
