@@ -635,7 +635,6 @@ def text_from_vosk_pipe(
             idle_time_test = idle_time - (idle_time_curr - idle_time_prev)
             if idle_time_test > 0.0:
                 # Prevents excessive processor load.
-                print(idle_time_test)
                 time.sleep(idle_time_test)
                 idle_time_prev = time.time()
             else:
