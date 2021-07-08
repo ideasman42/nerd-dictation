@@ -398,7 +398,6 @@ class from_words_to_digits:
             if is_final:
                 result_final = (result + current, suffix, word_index)
                 word_index_final = word_index
-                has_final = True
 
             # Once there is a suffix, don't attempt to parse extra numbers.
             if suffix:
