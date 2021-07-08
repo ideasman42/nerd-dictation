@@ -55,9 +55,6 @@ USER_CONFIG_DIR = "nerd-dictation"
 USER_CONFIG = "nerd-dictation.py"
 
 
-# The sample right to use for recording.
-RECORD_SAMPLE_RATE = 44100
-
 # -----------------------------------------------------------------------------
 # General Utilities
 #
@@ -523,6 +520,7 @@ def text_from_vosk_pipe(
     idle_time: float,
     progressive: bool,
     progressive_continuous: bool,
+    sample_rate: int,
     pulse_device_name: str = "",
 ) -> bool:
     # Delay some imports until recording has started to avoid minor delays.
@@ -538,7 +536,7 @@ def text_from_vosk_pipe(
     cmd = (
         "parec",
         "--record",
-        "--rate=%d" % RECORD_SAMPLE_RATE,
+        "--rate=%d" % sample_rate,
         "--channels=1",
         *(("--device=%s" % pulse_device_name,) if pulse_device_name else ()),
         "--format=s16ne",
@@ -558,7 +556,7 @@ def text_from_vosk_pipe(
     vosk.SetLogLevel(-1)
 
     model = vosk.Model(vosk_model_dir)
-    rec = vosk.KaldiRecognizer(model, RECORD_SAMPLE_RATE)
+    rec = vosk.KaldiRecognizer(model, sample_rate)
     # 1mb (allow for loading the model to take some time).
     block_size = 104_8576
 
@@ -705,6 +703,7 @@ def main_begin(
     vosk_model_dir: str,
     path_to_cookie: str = "",
     pulse_device_name: str = "",
+    sample_rate: int = 44100,
     progressive: bool = False,
     progressive_continuous: bool = False,
     full_sentence: bool = False,
@@ -866,6 +865,7 @@ def main_begin(
     found_any = text_from_vosk_pipe(
         vosk_model_dir=vosk_model_dir,
         pulse_device_name=pulse_device_name,
+        sample_rate=sample_rate,
         timeout=timeout,
         idle_time=idle_time,
         progressive=progressive,
@@ -945,6 +945,19 @@ This creates the directory used to store internal data, so other commands such a
         help=(
             "The name of the pulse-audio device to use for recording.\n"
             'See the output of "pactl list" to find device names.'
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--sample-rate",
+        dest="sample_rate",
+        default=44100,
+        type=int,
+        metavar="HZ",
+        help=(
+            "The sample rate to use for recording (in Hz).\n"
+            "Defaults to 44100."
         ),
         required=False,
     )
@@ -1095,6 +1108,7 @@ This creates the directory used to store internal data, so other commands such a
             path_to_cookie=args.path_to_cookie,
             vosk_model_dir=args.vosk_model_dir,
             pulse_device_name=args.pulse_device_name,
+            sample_rate=args.sample_rate,
             progressive=not (args.defer_output or args.output == "STDOUT"),
             progressive_continuous=args.progressive_continuous,
             full_sentence=args.full_sentence,

@@ -171,9 +171,10 @@ Subcommand: ``begin``
 usage::
 
        nerd-dictation begin [-h] [--cookie FILE_PATH] [--vosk-model-dir DIR]
-                            [--pulse-device-name IDENTIFIER] [--defer-output]
-                            [--continuous] [--timeout SECONDS]
-                            [--idle-time SECONDS] [--delay-exit SECONDS]
+                            [--pulse-device-name IDENTIFIER]
+                            [--sample-rate HZ] [--defer-output] [--continuous]
+                            [--timeout SECONDS] [--idle-time SECONDS]
+                            [--delay-exit SECONDS]
                             [--punctuate-from-previous-timeout SECONDS]
                             [--full-sentence] [--numbers-as-digits]
                             [--numbers-use-separator] [--output OUTPUT_METHOD]
@@ -189,6 +190,8 @@ optional arguments:
   --pulse-device-name IDENTIFIER
                         The name of the pulse-audio device to use for recording.
                         See the output of "pactl list" to find device names.
+  --sample-rate HZ      The sample rate to use for recording (in Hz).
+                        Defaults to 44100.
   --defer-output        When enabled, output is deferred until exiting.
 
                         This prevents text being typed during speech (implied with ``--output=STDOUT``)
