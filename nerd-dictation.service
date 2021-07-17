@@ -1,0 +1,15 @@
+#run with systemctl --user start nerd-dictation.service
+[Unit]
+Description=ah ah ah ah stayin' alive
+After=sound.target
+Requires=sound.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+ExecStart=pypy3 /opt/nerd-dictation/nerd-dictation begin --vosk-model-dir=/opt/nerd-dictation/model
+
+[Install]
+WantedBy=default.target
