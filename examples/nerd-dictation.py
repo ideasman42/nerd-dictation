@@ -35,11 +35,22 @@ WORD_REPLACE_REGEX = tuple(
     for (match, replacement) in WORD_REPLACE_REGEX
 )
 
+# -----------------------------------------------------------------------------
+# Ignore Words
+WORD_IGNORE = [
+    "huh",
+]
+
 
 # -----------------------------------------------------------------------------
 # Main Processing Function
 
 def nerd_dictation_process(text):
+    #if all words in WORD_IGNOR are found in text, return None
+    if all(word in text for word in WORD_IGNORE):
+        return None
+    #remove all words in text that are in WORD_IGNORE
+    text = re.sub(r"\b(%s)\b" % "|".join(WORD_IGNORE), "", text)
 
     for match, replacement in TEXT_REPLACE_REGEX:
         text = match.sub(replacement, text)
