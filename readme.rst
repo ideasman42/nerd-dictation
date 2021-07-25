@@ -70,7 +70,7 @@ Dependencies
 - Python 3.
 - The VOSK-API.
 - ``parec`` command (for recording from pulse-audio).
-- ``xdotool`` command to simulate keyboard input.
+- ``xdotool`` command to simulate keyboard input. (``sudo apt install xdotool`` on Ubuntu / Debian.)
 
 
 Install
@@ -275,6 +275,11 @@ Store the result of speech to text as a variable in the shell:
    SPEECH="$(nerd-dictation begin --timeout=1.0 --output=STDOUT)"
 
 
+Common Issues
+=============
+
+- If you encounter an error such as `FileNotFoundError: [Errno 2] No such file or directory: 'xdotool'`, simply install the missing dependany.
+
 Limitations
 ===========
 
@@ -297,3 +302,4 @@ Further Work
 - Add a ``setup.py`` for easy installation on uses systems.
 - Possibly other speech to text engines *(only if they provide some significant benefits)*.
 - Possibly support Windows & macOS.
+
