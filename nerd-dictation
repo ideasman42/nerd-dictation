@@ -728,14 +728,21 @@ def main_begin(
     if not path_to_cookie:
         path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
 
+    if input_method == "auto" and subprocess.getstatusoutput(("xdotool type ''"))[0] != 0:
+        input_method = "pynput"
+
     if input_method == "pynput":
         try:
             from pynput.keyboard import Key, Controller  # type: ignore
 
             keyboard = Controller()
         except ImportError:
-            sys.stderr.write("Module 'pynput' is not installed. Defaulting input method to xdotool.")
-            input_method = "xdotool"
+            sys.stderr.write("\nModule 'pynput' is not installed. Run: \n\tpip3 install pynput")
+            sys.exit()
+
+    if input_method == "xdotool" and subprocess.getstatusoutput(("xdotool type ''"))[0] != 0:
+        sys.stderr.write(subprocess.getstatusoutput(("xdotool type ''"))[1])
+        sys.exit()
 
     is_run_on = False
     if punctuate_from_previous_timeout > 0.0:
@@ -1074,11 +1081,12 @@ This creates the directory used to store internal data, so other commands such a
         "--simulate-input-method",
         dest="input_method",
         default="auto",
-        choices=("auto", "pynput"),
+        choices=("auto", "pynput", "xdotool"),
         help=(
             "Choose the tool to simulate keyboard inputs. Valid choices are:\n"
             "- ``auto`` uses xdotool with Xorg (default)\n"
             "- ``pynput``\n"
+            "- ``xdotool``\n"
         ),
         required=False,
     )

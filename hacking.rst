@@ -16,7 +16,7 @@ This code base is designed to be easily hacked on.
 
 - Single file code-base (the contents of ``nerd-dictation``).
 - Only built in modules are used (besides ``vosk`` for speech to text).
-- So far this has only tested on Linux/X11
+- So far this has only tested on Linux
   *(support for other platforms may be added in the future).*
 
 
