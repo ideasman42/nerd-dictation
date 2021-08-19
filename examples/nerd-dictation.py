@@ -1,6 +1,6 @@
 # User configuration file typically located at `~/.config/nerd-dictation/nerd-dictation.py`
 import re
-
+import subprocess
 
 # -----------------------------------------------------------------------------
 # Replace Multiple Words
@@ -14,6 +14,18 @@ TEXT_REPLACE_REGEX = tuple(
     (re.compile(match), replacement)
     for (match, replacement) in TEXT_REPLACE_REGEX
 )
+
+
+# -----------------------------------------------------------------------------
+# Map Single Words To Commands
+
+WORD_CMD_MAP = {
+    "left":     ("xdotool", "click", "--clearmodifiers", "--delay", "10", "1"),
+    "middle":   ("xdotool", "click", "--clearmodifiers", "--delay", "10", "2"),
+    "right":    ("xdotool", "click", "--clearmodifiers", "--delay", "10", "3"),
+    "backward": ("xdotool", "click", "--clearmodifiers", "--delay", "10", "4"),
+    "forward":  ("xdotool", "click", "--clearmodifiers", "--delay", "10", "5"),
+}
 
 
 # -----------------------------------------------------------------------------
@@ -48,6 +60,11 @@ def nerd_dictation_process(text):
 
     for i, w in enumerate(words):
         w_init = w
+        cmd = WORD_CMD_MAP.get(w)
+        if cmd is not None:
+            subprocess.check_output(cmd).decode("utf-8")
+            w = ""
+
         w_test = WORD_REPLACE.get(w)
         if w_test is not None:
             w = w_test
