@@ -816,7 +816,7 @@ def main_begin(
     # Handled the resulting text
     #
 
-    if input_method == "auto":
+    if input_method == "auto" and output == "SIMULATE_INPUT":
         if subprocess.getstatusoutput(("xdotool type ''"))[0] == 0:
             input_method = "xdotool"
         else:
@@ -876,9 +876,10 @@ def main_begin(
                 if not text_block:
                     pass
                 elif text_block.startswith("\x08"):
-                    keyboard.press(Key.backspace)
-                    time.sleep(0.01)
-                    keyboard.release(Key.backspace)
+                    for _ in range(len(text_block)):
+                        keyboard.press(Key.backspace)
+                        time.sleep(0.01)
+                        keyboard.release(Key.backspace)
                 else:
                     keyboard.type(text_block)
 
