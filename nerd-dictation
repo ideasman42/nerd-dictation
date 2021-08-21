@@ -728,25 +728,6 @@ def main_begin(
     if not path_to_cookie:
         path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
 
-    if input_method == "auto":
-        if subprocess.getstatusoutput(("xdotool type ''"))[0] == 0:
-            input_method = "xdotool"
-        else:
-            input_method = "pynput"
-
-    if input_method == "pynput":
-        try:
-            from pynput.keyboard import Key, Controller  # type: ignore
-
-            keyboard = Controller()
-        except ImportError:
-            sys.stderr.write("\nModule 'pynput' is not installed. Run: \n\tpip3 install pynput")
-            sys.exit()
-
-    if input_method == "xdotool" and subprocess.getstatusoutput(("xdotool type ''"))[0] != 0:
-        sys.stderr.write(subprocess.getstatusoutput(("xdotool type ''"))[1])
-        sys.exit()
-
     is_run_on = False
     if punctuate_from_previous_timeout > 0.0:
         age_in_seconds: Optional[float] = None
@@ -834,7 +815,18 @@ def main_begin(
     #
     # Handled the resulting text
     #
+
+    if input_method == "auto":
+        if subprocess.getstatusoutput(("xdotool type ''"))[0] == 0:
+            input_method = "xdotool"
+        else:
+            input_method = "pynput"
+
     if output == "SIMULATE_INPUT" and input_method == "xdotool":
+
+        if subprocess.getstatusoutput(("xdotool type ''"))[0] != 0:
+            sys.stderr.write(subprocess.getstatusoutput(("xdotool type ''"))[1])
+            sys.exit()
 
         def handle_fn(text: str) -> None:
             import re
@@ -867,6 +859,14 @@ def main_begin(
                     subprocess.check_output(cmd).decode("utf-8")
 
     elif output == "SIMULATE_INPUT" and input_method == "pynput":
+
+        try:
+            from pynput.keyboard import Key, Controller  # type: ignore
+
+            keyboard = Controller()
+        except ImportError:
+            sys.stderr.write("\nModule 'pynput' is not installed. Run: \n\tpip3 install pynput")
+            sys.exit()
 
         def handle_fn(text: str) -> None:
             import re
