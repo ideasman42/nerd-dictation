@@ -728,8 +728,11 @@ def main_begin(
     if not path_to_cookie:
         path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
 
-    if input_method == "auto" and subprocess.getstatusoutput(("xdotool type ''"))[0] != 0:
-        input_method = "pynput"
+    if input_method == "auto":
+        if subprocess.getstatusoutput(("xdotool type ''"))[0] == 0:
+            input_method = "xdotool"
+        else:
+            input_method = "pynput"
 
     if input_method == "pynput":
         try:
@@ -831,7 +834,7 @@ def main_begin(
     #
     # Handled the resulting text
     #
-    if output == "SIMULATE_INPUT":
+    if output == "SIMULATE_INPUT" and input_method == "xdotool":
 
         def handle_fn(text: str) -> None:
             import re
@@ -841,35 +844,43 @@ def main_begin(
                 if not text_block:
                     pass
                 elif text_block.startswith("\x08"):
-                    if input_method == "pynput":
-                        keyboard.press(Key.backspace)
-                        time.sleep(0.01)
-                        keyboard.release(Key.backspace)
-                    else:
-                        cmd = (
-                            "xdotool",
-                            "key",
-                            "--clearmodifiers",
-                            "--delay",
-                            "10",
-                            *(("BackSpace",) * len(text_block)),
-                        )
-                        subprocess.check_output(cmd).decode("utf-8")
+                    cmd = (
+                        "xdotool",
+                        "key",
+                        "--clearmodifiers",
+                        "--delay",
+                        "10",
+                        *(("BackSpace",) * len(text_block)),
+                    )
+                    subprocess.check_output(cmd).decode("utf-8")
                 else:
-                    if input_method == "pynput":
-                        keyboard.type(text_block)
-                    else:
-                        cmd = (
-                            "xdotool",
-                            "type",
-                            "--clearmodifiers",
-                            # Use a value higher than twelve so the characters don't get skipped (tsk!).
-                            "--delay",
-                            "10",
-                            "--",
-                            text_block,
-                        )
-                        subprocess.check_output(cmd).decode("utf-8")
+                    cmd = (
+                        "xdotool",
+                        "type",
+                        "--clearmodifiers",
+                        # Use a value higher than twelve so the characters don't get skipped (tsk!).
+                        "--delay",
+                        "10",
+                        "--",
+                        text_block,
+                    )
+                    subprocess.check_output(cmd).decode("utf-8")
+
+    elif output == "SIMULATE_INPUT" and input_method == "pynput":
+
+        def handle_fn(text: str) -> None:
+            import re
+
+            # Back-space character.
+            for text_block in re.split("(\x08)", text):
+                if not text_block:
+                    pass
+                elif text_block.startswith("\x08"):
+                    keyboard.press(Key.backspace)
+                    time.sleep(0.01)
+                    keyboard.release(Key.backspace)
+                else:
+                    keyboard.type(text_block)
 
     elif output == "STDOUT":
 
