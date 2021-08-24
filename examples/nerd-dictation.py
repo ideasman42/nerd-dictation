@@ -20,7 +20,6 @@ WORD_CMD_MAP = {
 }
 
 
-
 # -----------------------------------------------------------------------------
 # Replace Multiple Words
 
@@ -60,13 +59,13 @@ WORD_REPLACE_REGEX = tuple(
 
 def nerd_dictation_process(text):
 
-    # # Determinate the command.
+    # # Determinate the command name.
     if not nerd_dictation_process.cmd_name:
         words = text.split(" ")
         if words:
             cmd_name_test = words[0]
 
-            # Reset if command is not recognised.
+            # Reset if command name is not recognised.
             if cmd_name_test != DICTATION_CMD_NAME and cmd_name_test not in WORD_CMD_MAP:
                 sys.stderr.write("Command name '%s' not recognised\n" % cmd_name_test)
                 sys.exit(1) # TODO: reset here instead!
