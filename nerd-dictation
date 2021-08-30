@@ -955,10 +955,7 @@ This creates the directory used to store internal data, so other commands such a
         default=44100,
         type=int,
         metavar="HZ",
-        help=(
-            "The sample rate to use for recording (in Hz).\n"
-            "Defaults to 44100."
-        ),
+        help=("The sample rate to use for recording (in Hz).\n" "Defaults to 44100."),
         required=False,
     )
 
@@ -968,7 +965,8 @@ This creates the directory used to store internal data, so other commands such a
         default=False,
         action="store_true",
         help=(
-            "When enabled, output is deferred until exiting.\n\n"
+            "When enabled, output is deferred until exiting.\n"
+            "\n"
             "This prevents text being typed during speech (implied with ``--output=STDOUT``)"
         ),
         required=False,
