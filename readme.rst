@@ -189,7 +189,7 @@ optional arguments:
   --vosk-model-dir DIR  Path to the VOSK model, see: https://alphacephei.com/vosk/models
   --pulse-device-name IDENTIFIER
                         The name of the pulse-audio device to use for recording.
-                        See the output of "pactl list" to find device names.
+                        See the output of "pactl list" to find device names (using the identifier following "Name:").
   --sample-rate HZ      The sample rate to use for recording (in Hz).
                         Defaults to 44100.
   --defer-output        When enabled, output is deferred until exiting.

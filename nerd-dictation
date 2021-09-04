@@ -944,7 +944,7 @@ This creates the directory used to store internal data, so other commands such a
         metavar="IDENTIFIER",
         help=(
             "The name of the pulse-audio device to use for recording.\n"
-            'See the output of "pactl list" to find device names.'
+            "See the output of \"pactl list\" to find device names (using the identifier following \"Name:\")."
         ),
         required=False,
     )
