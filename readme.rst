@@ -275,6 +275,12 @@ Store the result of speech to text as a variable in the shell:
    SPEECH="$(nerd-dictation begin --timeout=1.0 --output=STDOUT)"
 
 
+Other Software
+==============
+
+- `Elograf <https://github.com/papoteur-mga/elograf>`__ - nerd-dictation GUI front-end that runs as a tray icon.
+
+
 Limitations
 ===========
 
