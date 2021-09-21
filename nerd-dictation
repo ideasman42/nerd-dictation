@@ -490,7 +490,7 @@ def process_text(
     text = text.replace("\n", " ")
     words = text.split(" ")
 
-    # Fist parse numbers.
+    # First parse numbers.
     if numbers_as_digits:
         from_words_to_digits.parse_numbers_in_word_list(
             words,
