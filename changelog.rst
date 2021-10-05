@@ -3,6 +3,7 @@
 Changelog
 #########
 
+- 2021/10/05: Fix bug where quickly running begin/end would leave dictation enabled.
 - 2021/07/08: Add ``--sample-rate``, optionally set the sample rate used for recording.
 - 2021/06/25: Add ``--idle-time``, optionally idle to avoid high CPU usage for no perceptual gain (fixes #6).
 - 2021/06/07: Add ``--delay-exit``, convenient when pushed to talk is used.

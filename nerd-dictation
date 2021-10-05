@@ -60,11 +60,16 @@ USER_CONFIG = "nerd-dictation.py"
 #
 
 
-def touch(filepath: str) -> None:
+def touch(filepath: str, time: Optional[float] = None) -> None:
     if os.path.exists(filepath):
-        os.utime(filepath, None)
+        os.utime(filepath, None if time is None else (time, time))
     else:
         open(filepath, "a").close()
+        if time is not None:
+            try:
+                os.utime(filepath, (time, time))
+            except FileNotFoundError:
+                pass
 
 
 def file_mtime_or_none(filepath: str) -> Optional[float]:
@@ -623,7 +628,7 @@ def text_from_vosk_pipe(
 
     while code == 0:
         # -1=cancel, 0=continue, 1=finish.
-        code = exit_fn()
+        code = exit_fn(handled_any)
 
         if idle_time > 0.0:
             # Subtract processing time from the previous loop.
@@ -744,10 +749,11 @@ def main_begin(
         is_run_on = age_in_seconds is not None and (age_in_seconds < punctuate_from_previous_timeout)
         del age_in_seconds
 
-    touch(path_to_cookie)
-
+    # Force zero time-stamp so a fast begin/end (tap) action
+    # doesn't leave dictation running.
+    touch(path_to_cookie, time=0)
     cookie_timestamp = file_mtime_or_none(path_to_cookie)
-    if cookie_timestamp is None:
+    if cookie_timestamp != 0:
         sys.stderr.write("Cookie removed after right after creation (unlikely but respect the request)\n")
         return
 
@@ -761,20 +767,23 @@ def main_begin(
     # Lazy loaded so recording can start 1st.
     user_config = None
 
-    def exit_fn() -> int:
+    def exit_fn(handled_any: bool) -> int:
         nonlocal touch_mtime
         if not os.path.exists(path_to_cookie):
             return -1  # Cancel.
         if file_mtime_or_none(path_to_cookie) != cookie_timestamp:
 
-            # Implement `delay_exit` workaround.
-            if use_overtime:
-                if touch_mtime is None:
-                    touch_mtime = time.time()
-                if time.time() - touch_mtime < delay_exit:
-                    # Continue until `delay_exit` is reached.
-                    return 0
-            # End `delay_exit`.
+            # Only delay exit if some text has been handled,
+            # this prevents accidental tapping of push to talk from running.
+            if handled_any:
+                # Implement `delay_exit` workaround.
+                if use_overtime:
+                    if touch_mtime is None:
+                        touch_mtime = time.time()
+                    if time.time() - touch_mtime < delay_exit:
+                        # Continue until `delay_exit` is reached.
+                        return 0
+                # End `delay_exit`.
 
             return 1  # End.
         return 0  # Continue.
