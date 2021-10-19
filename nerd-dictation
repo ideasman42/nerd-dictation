@@ -33,6 +33,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from functools import partial
 
 # Types.
 from typing import (
@@ -98,12 +99,9 @@ def file_remove_if_exists(filepath: str) -> bool:
         return False
 
 
-def file_handle_make_non_blocking(file_handle: IO[bytes]) -> None:
-    import fcntl
-
-    # Get current `file_handle` flags.
-    flags = fcntl.fcntl(file_handle.fileno(), fcntl.F_GETFL)
-    fcntl.fcntl(file_handle, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+def enqueue_output(vosk_out, queue):
+    for block in iter(partial(vosk_out.read, 16384), b""):
+        queue.put(block)
 
 
 def execfile(filepath: str, mod: Optional[ModuleType] = None) -> Optional[ModuleType]:
@@ -539,22 +537,38 @@ def text_from_vosk_pipe(
         )
         sys.exit(1)
 
-    cmd = (
-        "parec",
-        "--record",
-        "--rate=44100",
-        "--channels=1",
-        *(("--device=%s" % pulse_device_name,) if pulse_device_name else ()),
-        "--format=s16ne",
-        "--latency=10",
-    )
+    if os.name == "posix":
+        cmd = (
+            "parec",
+            "--record",
+            "--rate=44100",
+            "--channels=1",
+            *(("--device=%s" % pulse_device_name,) if pulse_device_name else ()),
+            "--format=s16ne",
+            "--latency=10",
+        )
+    else:
+        # https://stsaz.github.io/fmedia/recording/#stdout
+        cmd = (
+            "fmedia",
+            "--record",
+            "--out=@stdout.wav",
+            "--rate=%d" % sample_rate,
+            "--channels=mono",
+            "--format=int16",
+            "--notui",
+        )
     ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-
     stdout = ps.stdout
     assert stdout is not None
 
-    # Needed so whatever is available can be read (without waiting).
-    file_handle_make_non_blocking(stdout)
+    from threading import Thread
+    from queue import Queue, Empty
+
+    vosk_queue:Queue = Queue()
+    t = Thread(target=enqueue_output, args=(stdout, vosk_queue))
+    t.daemon = True
+    t.start()
 
     # `mypy` doesn't know about VOSK.
     import vosk  # type: ignore
@@ -628,9 +642,11 @@ def text_from_vosk_pipe(
         if code != -1:
             # Mostly the data read is quite small (under 1k).
             # Only the 1st entry in the loop reads a lot of data due to the time it takes to initialize the VOSK module.
-            data = stdout.read(block_size)
-
-            if data:
+            try:
+                data = vosk_queue.get_nowait()
+            except Empty:
+                pass
+            else:
                 ok = rec.AcceptWaveform(data)
 
                 if ok:
@@ -721,7 +737,6 @@ def main_begin(
     if not vosk_model_dir:
         vosk_model_dir = calc_user_config_path("model")
         # If this still doesn't exist the error is handled later.
-
     #
     # Initialize the recording state and perform some sanity checks.
     #
