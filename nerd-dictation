@@ -96,7 +96,7 @@ def file_remove_if_exists(filepath: str) -> bool:
 
 
 def enqueue_output(vosk_out, queue):
-    for block in iter(partial(vosk_out.read, 16384), b""):
+    for block in iter(partial(vosk_out.read, 1024), b""):
         queue.put(block)
 
 
@@ -649,7 +649,7 @@ def text_from_vosk_pipe(
             # Skip idling in the event dictation can't keep up with the recording.
             idle_time_curr = time.time()
             idle_time_test = idle_time - (idle_time_curr - idle_time_prev)
-            if idle_time_test > 0.0:
+            if vosk_queue.empty() and  idle_time_test > 0.0:
                 # Prevents excessive processor load.
                 time.sleep(idle_time_test)
                 idle_time_prev = time.time()
