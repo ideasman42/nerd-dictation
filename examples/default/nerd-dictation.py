@@ -61,4 +61,7 @@ def nerd_dictation_process(text):
 
         words[i] = w
 
+    # Strip any words that were replaced with empty strings.
+    words[:] = [w for w in words if w]
+
     return " ".join(words)

@@ -55,26 +55,22 @@ USER_CONFIG_DIR = "nerd-dictation"
 
 USER_CONFIG = "nerd-dictation.py"
 
-# Extra time to record (in seconds).
-# NOTE: ideally this would not be necessary, however buffering data from the pipe means
-# some extra delay is needed.
-#
-# TODO: make this an option or use a more sophisticated method of recording.
-RECORD_OVERTIME = 0.3
-
-# The amount of time to sleep (in seconds) when idle and 'progressive_continuous' mode is enabled.
-PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE = 0.2
 
 # -----------------------------------------------------------------------------
 # General Utilities
 #
 
 
-def touch(filepath: str) -> None:
+def touch(filepath: str, time: Optional[float] = None) -> None:
     if os.path.exists(filepath):
-        os.utime(filepath, None)
+        os.utime(filepath, None if time is None else (time, time))
     else:
         open(filepath, "a").close()
+        if time is not None:
+            try:
+                os.utime(filepath, (time, time))
+            except FileNotFoundError:
+                pass
 
 
 def file_mtime_or_none(filepath: str) -> Optional[float]:
@@ -112,6 +108,8 @@ def execfile(filepath: str, mod: Optional[ModuleType] = None) -> Optional[Module
 
     mod_name = "__main__"
     mod_spec = importlib.util.spec_from_file_location(mod_name, filepath)
+    if mod_spec is None:
+        raise Exception("Unable to retrieve the module-spec from %r" % filepath)
     if mod is None:
         mod = importlib.util.module_from_spec(mod_spec)
 
@@ -400,7 +398,6 @@ class from_words_to_digits:
             if is_final:
                 result_final = (result + current, suffix, word_index)
                 word_index_final = word_index
-                has_final = True
 
             # Once there is a suffix, don't attempt to parse extra numbers.
             if suffix:
@@ -429,7 +426,7 @@ class from_words_to_digits:
                     if (i_number_prev != -1) and (i_number_prev + 1 != i):
                         words_between = tuple(word_list[i_number_prev + 1 : i])
                         found = True
-                        # While other  more here for now this is enough.
+                        # While more could be added here, for now this is enough.
                         if words_between == ("point",):
                             word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + "." + word_list[i]]
                         elif words_between == ("minus",):
@@ -496,7 +493,7 @@ def process_text(
     text = text.replace("\n", " ")
     words = text.split(" ")
 
-    # Fist parse numbers.
+    # First parse numbers.
     if numbers_as_digits:
         from_words_to_digits.parse_numbers_in_word_list(
             words,
@@ -523,8 +520,10 @@ def text_from_vosk_pipe(
     process_fn: Callable[[str], str],
     handle_fn: Callable[[str], None],
     timeout: float,
+    idle_time: float,
     progressive: bool,
     progressive_continuous: bool,
+    sample_rate: int,
     pulse_device_name: str = "",
 ) -> bool:
     # Delay some imports until recording has started to avoid minor delays.
@@ -541,7 +540,7 @@ def text_from_vosk_pipe(
         cmd = (
             "parec",
             "--record",
-            "--rate=44100",
+            "--rate=%d" % sample_rate,
             "--channels=1",
             *(("--device=%s" % pulse_device_name,) if pulse_device_name else ()),
             "--format=s16ne",
@@ -576,7 +575,7 @@ def text_from_vosk_pipe(
     vosk.SetLogLevel(-1)
 
     model = vosk.Model(vosk_model_dir)
-    rec = vosk.KaldiRecognizer(model, 44100)
+    rec = vosk.KaldiRecognizer(model, sample_rate)
     # 1mb (allow for loading the model to take some time).
     block_size = 104_8576
 
@@ -635,62 +634,69 @@ def text_from_vosk_pipe(
 
         handled_any = True
 
-    while True:
+    # Use code to delay exiting, allowing reading the recording buffer to catch-up.
+    code = 0
+
+    if idle_time > 0.0:
+        idle_time_prev = time.time()
+
+    while code == 0:
         # -1=cancel, 0=continue, 1=finish.
-        code = exit_fn()
+        code = exit_fn(handled_any)
 
-        if code != -1:
-            # Mostly the data read is quite small (under 1k).
-            # Only the 1st entry in the loop reads a lot of data due to the time it takes to initialize the VOSK module.
-            try:
-                data = vosk_queue.get_nowait()
-            except Empty:
-                pass
+        if idle_time > 0.0:
+            # Subtract processing time from the previous loop.
+            # Skip idling in the event dictation can't keep up with the recording.
+            idle_time_curr = time.time()
+            idle_time_test = idle_time - (idle_time_curr - idle_time_prev)
+            if idle_time_test > 0.0:
+                # Prevents excessive processor load.
+                time.sleep(idle_time_test)
+                idle_time_prev = time.time()
             else:
-                ok = rec.AcceptWaveform(data)
+                idle_time_prev = idle_time_curr
 
-                if ok:
-                    json_text = rec.Result()
-                    json_text_partial_prev = ""
+        try:
+            data = vosk_queue.get_nowait()
+        except Empty:
+            pass
+        else:
+            ok = rec.AcceptWaveform(data)
+            if ok:
+                json_text = rec.Result()
+                json_text_partial_prev = ""
+                json_data = json.loads(json_text)
+                text = json_data["text"]
+                assert isinstance(text, str)
+                if text:
+                    handle_fn_wrapper(text, False)
+            else:
+                # Only for comparison, to detect change.
+                # if use_timeout:
+                json_text = rec.PartialResult()
+                # Without this, there are *many* calls with the same partial text.
+                if json_text_partial_prev != json_text:
+                    json_text_partial_prev = json_text
+
                     json_data = json.loads(json_text)
-                    text = json_data["text"]
-                    assert isinstance(text, str)
+                    text = json_data["partial"]
                     if text:
-                        handle_fn_wrapper(text, False)
-                else:
-                    # Only for comparison, to detect change.
-                    # if use_timeout:
-                    json_text = rec.PartialResult()
-                    # Without this, there are *many* calls with the same partial text.
-                    if json_text_partial_prev != json_text:
-                        json_text_partial_prev = json_text
+                        handle_fn_wrapper(text, True)
 
-                        json_data = json.loads(json_text)
-                        text = json_data["partial"]
-                        if text:
-                            handle_fn_wrapper(text, True)
-                        else:
-                            if progressive and progressive_continuous:
-                                # Continuous' mode is intended to support being left running in the background.
-                                # As there was nothing to do sleep for 1/5th of a second,
-                                # prevents excessive processor load.
-                                # This is fairly arbitrary but small enough for users not to notice a delay.
-                                time.sleep(PROGRESSIVE_CONTINUOUS_SLEEP_WHEN_IDLE)
-
-                # Monitor the partial output.
-                # Finish if no changes are made for `timeout` seconds.
-                if use_timeout:
-                    if json_text != timeout_text_prev:
-                        timeout_text_prev = json_text
-                        timeout_time_prev = time.time()
-                    elif time.time() - timeout_time_prev > timeout:
+            # Monitor the partial output.
+            # Finish if no changes are made for `timeout` seconds.
+            if use_timeout:
+                if json_text != timeout_text_prev:
+                    timeout_text_prev = json_text
+                    timeout_time_prev = time.time()
+                elif time.time() - timeout_time_prev > timeout:
+                    if code == 0:
                         code = 1  # The time was exceeded, exit!
 
-        if code != 0:
-            import signal
+    # Close the recording process.
+    import signal
 
-            os.kill(ps.pid, signal.SIGINT)
-            break
+    os.kill(ps.pid, signal.SIGINT)
 
     if code == -1:
         sys.stderr.write("Text input canceled!\n")
@@ -715,12 +721,15 @@ def main_begin(
     vosk_model_dir: str,
     path_to_cookie: str = "",
     pulse_device_name: str = "",
+    sample_rate: int = 44100,
     progressive: bool = False,
     progressive_continuous: bool = False,
     full_sentence: bool = False,
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
     timeout: float = 0.0,
+    idle_time: float = 0.0,
+    delay_exit: float = 0.0,
     punctuate_from_previous_timeout: float = 0.0,
     output: str = "TYPE",
     input_method: str = "auto",
@@ -762,10 +771,11 @@ def main_begin(
         is_run_on = age_in_seconds is not None and (age_in_seconds < punctuate_from_previous_timeout)
         del age_in_seconds
 
-    touch(path_to_cookie)
-
+    # Force zero time-stamp so a fast begin/end (tap) action
+    # doesn't leave dictation running.
+    touch(path_to_cookie, time=0)
     cookie_timestamp = file_mtime_or_none(path_to_cookie)
-    if cookie_timestamp is None:
+    if cookie_timestamp != 0:
         sys.stderr.write("Cookie removed after right after creation (unlikely but respect the request)\n")
         return
 
@@ -774,25 +784,28 @@ def main_begin(
     #
 
     touch_mtime = None
-    use_overtime = RECORD_OVERTIME > 0.0 and timeout == 0.0
+    use_overtime = delay_exit > 0.0 and timeout == 0.0
 
     # Lazy loaded so recording can start 1st.
     user_config = None
 
-    def exit_fn() -> int:
+    def exit_fn(handled_any: bool) -> int:
         nonlocal touch_mtime
         if not os.path.exists(path_to_cookie):
             return -1  # Cancel.
         if file_mtime_or_none(path_to_cookie) != cookie_timestamp:
 
-            # Implement `RECORD_OVERTIME` workaround.
-            if use_overtime:
-                if touch_mtime is None:
-                    touch_mtime = time.time()
-                if time.time() - touch_mtime < RECORD_OVERTIME:
-                    # Continue until `RECORD_OVERTIME` is reached.
-                    return 0
-            # End `RECORD_OVERTIME`.
+            # Only delay exit if some text has been handled,
+            # this prevents accidental tapping of push to talk from running.
+            if handled_any:
+                # Implement `delay_exit` workaround.
+                if use_overtime:
+                    if touch_mtime is None:
+                        touch_mtime = time.time()
+                    if time.time() - touch_mtime < delay_exit:
+                        # Continue until `delay_exit` is reached.
+                        return 0
+                # End `delay_exit`.
 
             return 1  # End.
         return 0  # Continue.
@@ -891,7 +904,9 @@ def main_begin(
     found_any = text_from_vosk_pipe(
         vosk_model_dir=vosk_model_dir,
         pulse_device_name=pulse_device_name,
+        sample_rate=sample_rate,
         timeout=timeout,
+        idle_time=idle_time,
         progressive=progressive,
         progressive_continuous=progressive_continuous,
         exit_fn=exit_fn,
@@ -968,8 +983,18 @@ This creates the directory used to store internal data, so other commands such a
         metavar="IDENTIFIER",
         help=(
             "The name of the pulse-audio device to use for recording.\n"
-            'See the output of "pactl list" to find device names.'
+            'See the output of "pactl list sources" to find device names (using the identifier following "Name:").'
         ),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--sample-rate",
+        dest="sample_rate",
+        default=44100,
+        type=int,
+        metavar="HZ",
+        help=("The sample rate to use for recording (in Hz).\n" "Defaults to 44100."),
         required=False,
     )
 
@@ -979,7 +1004,8 @@ This creates the directory used to store internal data, so other commands such a
         default=False,
         action="store_true",
         help=(
-            "When enabled, output is deferred until exiting.\n\n"
+            "When enabled, output is deferred until exiting.\n"
+            "\n"
             "This prevents text being typed during speech (implied with ``--output=STDOUT``)"
         ),
         required=False,
@@ -1007,6 +1033,35 @@ This creates the directory used to store internal data, so other commands such a
         help=(
             "Time out recording when no speech is processed for the time in seconds.\n"
             "This can be used to avoid having to explicitly exit "
+            "(zero disables)."
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--idle-time",
+        dest="idle_time",
+        default=0.1,
+        type=float,
+        metavar="SECONDS",
+        help=(
+            "Time to idle between processing audio from the recording.\n"
+            "Setting to zero is the most responsive at the cost of high CPU usage.\n"
+            "The default value is 0.1 (processing 10 times a second), which is quite responsive in practice\n"
+            "(the maximum value is clamped to 0.5)"
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--delay-exit",
+        dest="delay_exit",
+        default=0.0,
+        type=float,
+        metavar="SECONDS",
+        help=(
+            "The time to continue running after an exit request.\n"
+            'this can be useful so "push to talk" setups can be released while you finish speaking\n'
             "(zero disables)."
         ),
         required=False,
@@ -1103,12 +1158,15 @@ This creates the directory used to store internal data, so other commands such a
             path_to_cookie=args.path_to_cookie,
             vosk_model_dir=args.vosk_model_dir,
             pulse_device_name=args.pulse_device_name,
+            sample_rate=args.sample_rate,
             progressive=not (args.defer_output or args.output == "STDOUT"),
             progressive_continuous=args.progressive_continuous,
             full_sentence=args.full_sentence,
             numbers_as_digits=args.numbers_as_digits,
             numbers_use_separator=args.numbers_use_separator,
             timeout=args.timeout,
+            idle_time=min(args.idle_time, 0.5),
+            delay_exit=args.delay_exit,
             punctuate_from_previous_timeout=args.punctuate_from_previous_timeout,
             output=args.output,
             input_method=args.input_method,

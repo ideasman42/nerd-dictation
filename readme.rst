@@ -171,8 +171,10 @@ Subcommand: ``begin``
 usage::
 
        nerd-dictation begin [-h] [--cookie FILE_PATH] [--vosk-model-dir DIR]
-                            [--pulse-device-name IDENTIFIER] [--defer-output]
-                            [--continuous] [--timeout SECONDS]
+                            [--pulse-device-name IDENTIFIER]
+                            [--sample-rate HZ] [--defer-output] [--continuous]
+                            [--timeout SECONDS] [--idle-time SECONDS]
+                            [--delay-exit SECONDS]
                             [--punctuate-from-previous-timeout SECONDS]
                             [--full-sentence] [--numbers-as-digits]
                             [--numbers-use-separator] [--output OUTPUT_METHOD]
@@ -187,7 +189,9 @@ optional arguments:
   --vosk-model-dir DIR  Path to the VOSK model, see: https://alphacephei.com/vosk/models
   --pulse-device-name IDENTIFIER
                         The name of the pulse-audio device to use for recording.
-                        See the output of "pactl list" to find device names.
+                        See the output of "pactl list sources" to find device names (using the identifier following "Name:").
+  --sample-rate HZ      The sample rate to use for recording (in Hz).
+                        Defaults to 44100.
   --defer-output        When enabled, output is deferred until exiting.
 
                         This prevents text being typed during speech (implied with ``--output=STDOUT``)
@@ -196,6 +200,13 @@ optional arguments:
                         Only used when ``--defer-output`` is disabled.
   --timeout SECONDS     Time out recording when no speech is processed for the time in seconds.
                         This can be used to avoid having to explicitly exit (zero disables).
+  --idle-time SECONDS   Time to idle between processing audio from the recording.
+                        Setting to zero is the most responsive at the cost of high CPU usage.
+                        The default value is 0.1 (processing 10 times a second), which is quite responsive in practice
+                        (the maximum value is clamped to 0.5)
+  --delay-exit SECONDS  The time to continue running after an exit request.
+                        this can be useful so "push to talk" setups can be released while you finish speaking
+                        (zero disables).
   --punctuate-from-previous-timeout SECONDS
                         The time-out in seconds for detecting the state of dictation from the previous recording, this can be useful so punctuation it is added before entering the dictation(zero disables).
   --full-sentence       Capitalize the first character.
@@ -262,6 +273,23 @@ Store the result of speech to text as a variable in the shell:
 .. code-block:: sh
 
    SPEECH="$(nerd-dictation begin --timeout=1.0 --output=STDOUT)"
+
+
+Example Configurations
+----------------------
+
+These are example configurations you may use as a reference.
+
+- `Word Replacement
+  <https://github.com/ideasman42/nerd-dictation/blob/master/examples/default/nerd-dictation.py>`__.
+- `Start/Finish Commands
+  <https://github.com/ideasman42/nerd-dictation/blob/master/examples/begin_end_commands/nerd-dictation.py>`__.
+
+
+Other Software
+==============
+
+- `Elograf <https://github.com/papoteur-mga/elograf>`__ - nerd-dictation GUI front-end that runs as a tray icon.
 
 
 Limitations
