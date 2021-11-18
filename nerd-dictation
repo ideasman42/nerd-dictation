@@ -615,7 +615,8 @@ def text_from_vosk_pipe(
         user_config = user_config_as_module_or_none()
         if user_config is not None:
             macro = process_macro_with_user_config(user_config, text)
-            text_curr = ""
+            if macro is not None:
+                text_curr = ""
             text_list = []
 
         if macro is None:
