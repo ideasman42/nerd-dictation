@@ -616,6 +616,7 @@ def text_from_vosk_pipe(
         if user_config is not None:
             macro = process_macro_with_user_config(user_config, text)
             text_curr = ""
+            text_list = []
 
         if macro is None:
             if progressive_continuous:
@@ -638,11 +639,10 @@ def text_from_vosk_pipe(
         if not is_partial_arg:
             if progressive_continuous:
                 text_prev = ""
+            if macro is not None:
+                subprocess.check_output(macro).decode("utf-8")
             else:
                 text_list.append(text)
-
-        if macro is not None:
-            subprocess.check_output(macro).decode("utf-8")
 
         handled_any = True
 
