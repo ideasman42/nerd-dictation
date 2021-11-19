@@ -41,7 +41,7 @@ WORD_REPLACE_REGEX = tuple(
 
 def nerd_dictation_macro_process(command):
     if command.startswith("command") and command != "command":
-        return ("xdotool", "click", "--clearmodifiers", "--delay", "10", "1")
+        return [("xdotool", "click", "--clearmodifiers", "--delay", "10", "1")]
     return None
 
 def nerd_dictation_process(text):
