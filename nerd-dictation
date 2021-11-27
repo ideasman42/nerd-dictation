@@ -460,6 +460,22 @@ class from_words_to_digits:
                     i -= 1
             i += 1
 
+# -----------------------------------------------------------------------------
+# Process Macro
+#
+
+def process_macro_with_user_config(user_config: ModuleType, text: str) -> str:
+
+    macro_fn_name = "nerd_dictation_macro_process"
+    macro_process_fn = getattr(user_config, macro_fn_name)
+    if macro_process_fn is None:
+        return None
+    try:
+        return macro_process_fn(text)
+    except Exception as ex:
+        sys.stderr.write("Failed to run %r with error %s\n" % (user_config, str(ex)))
+        sys.exit(1)
+
 
 # -----------------------------------------------------------------------------
 # Process Text
@@ -604,10 +620,19 @@ def text_from_vosk_pipe(
 
         # Progressive support (type as you speak).
         nonlocal text_prev
-        if progressive_continuous:
-            text_curr = process_fn(text)
-        else:
-            text_curr = process_fn(" ".join(text_list + [text]))
+
+        user_config = user_config_as_module_or_none()
+        if user_config is not None:
+            macro = process_macro_with_user_config(user_config, text)
+            if macro is not None:
+                text_curr = ""
+                text_list = []
+
+        if macro is None:
+            if progressive_continuous:
+                text_curr = process_fn(text)
+            else:
+                text_curr = process_fn(" ".join(text_list + [text]))
 
         if text_curr != text_prev:
             match = min(len(text_curr), len(text_prev))
@@ -622,6 +647,9 @@ def text_from_vosk_pipe(
             text_prev = text_curr
 
         if not is_partial_arg:
+            if macro is not None:
+                for command in macro:
+                    subprocess.check_output(command).decode("utf-8")
             if progressive_continuous:
                 text_prev = ""
             else:
