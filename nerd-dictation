@@ -60,6 +60,15 @@ USER_CONFIG = "nerd-dictation.py"
 #
 
 
+def run_xdotool(subcommand: str, payload: List[str]) -> None:
+    cmd = [
+        "xdotool",
+        subcommand,
+        "--clearmodifiers",
+    ] + payload
+    subprocess.check_output(cmd).decode("utf-8")
+
+
 def touch(filepath: str, time: Optional[float] = None) -> None:
     if os.path.exists(filepath):
         os.utime(filepath, None if time is None else (time, time))
@@ -520,7 +529,7 @@ def text_from_vosk_pipe(
     vosk_model_dir: str,
     exit_fn: Callable[..., int],
     process_fn: Callable[[str], str],
-    handle_fn: Callable[[str], None],
+    handle_fn: Callable[[str, int], None],
     timeout: float,
     idle_time: float,
     progressive: bool,
@@ -607,8 +616,8 @@ def text_from_vosk_pipe(
                     match = i
                     break
 
-            # Use the ASCII code for back-space (if there is anything to back-space).
-            handle_fn(("\x08" * (len(text_prev) - match)) + text_curr[match:])
+            # Emit text, deleting any previous incorrectly transcribed output
+            handle_fn(text_curr[match:], len(text_prev) - match)
 
             text_prev = text_curr
 
@@ -698,7 +707,8 @@ def text_from_vosk_pipe(
         handle_fn_wrapper(text, False)
 
     if not progressive:
-        handle_fn(process_fn(" ".join(text_list)))
+        # We never arrive here needing deletions
+        handle_fn(process_fn(" ".join(text_list)), 0)
 
     return handled_any
 
@@ -832,39 +842,16 @@ def main_begin(
     #
     if output == "SIMULATE_INPUT":
 
-        def handle_fn(text: str) -> None:
-            import re
-
-            # Back-space character.
-            for text_block in re.split("(\x08)", text):
-                if not text_block:
-                    pass
-                elif text_block.startswith("\x08"):
-                    cmd = (
-                        "xdotool",
-                        "key",
-                        "--clearmodifiers",
-                        "--delay",
-                        "10",
-                        *(("BackSpace",) * len(text_block)),
-                    )
-                    subprocess.check_output(cmd).decode("utf-8")
-                else:
-                    cmd = (
-                        "xdotool",
-                        "type",
-                        "--clearmodifiers",
-                        # Use a value higher than twelve so the characters don't get skipped (tsk!).
-                        "--delay",
-                        "10",
-                        "--",
-                        text_block,
-                    )
-                    subprocess.check_output(cmd).decode("utf-8")
+        def handle_fn(text: str, delete_prev_chars: int) -> None:
+            if delete_prev_chars:
+                run_xdotool("key", ["BackSpace"] * delete_prev_chars)
+            run_xdotool("type", ["--", text])
 
     elif output == "STDOUT":
 
-        def handle_fn(text: str) -> None:
+        def handle_fn(text: str, delete_prev_chars: int) -> None:
+            if delete_prev_chars:
+                sys.stdout.write("\x08" * delete_prev_chars)
             sys.stdout.write(text)
 
     else:
