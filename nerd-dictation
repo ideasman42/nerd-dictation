@@ -59,6 +59,7 @@ USER_CONFIG = "nerd-dictation.py"
 # General Utilities
 #
 
+
 def run_xdotool(subcommand: str, payload: List[str]) -> None:
     cmd = [
         "xdotool",
@@ -528,7 +529,7 @@ def text_from_vosk_pipe(
     vosk_model_dir: str,
     exit_fn: Callable[..., int],
     process_fn: Callable[[str], str],
-    handle_fn: Callable[[str], None],
+    handle_fn: Callable[[str, int], None],
     timeout: float,
     idle_time: float,
     progressive: bool,
@@ -843,8 +844,8 @@ def main_begin(
 
         def handle_fn(text: str, delete_prev_chars: int) -> None:
             if delete_prev_chars:
-                run_xdotool('key', ["BackSpace"] * delete_prev_chars)
-            run_xdotool('type', ["--", text])
+                run_xdotool("key", ["BackSpace"] * delete_prev_chars)
+            run_xdotool("type", ["--", text])
 
     elif output == "STDOUT":
 
