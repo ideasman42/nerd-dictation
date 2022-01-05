@@ -269,20 +269,20 @@ def from_words_to_digits_setup_once() -> Tuple[
     for idx, word_pairs in enumerate(units_tens):
         for word, suffix in word_pairs:
             number_words[word] = (1, idx * 10, suffix, True)
-    for idx, (word_pairs, power) in enumerate(scales):
+    for word_pairs, power in scales:
         for word, suffix in word_pairs:
             number_words[word] = (10 ** power, 0, suffix, True)
 
     # Needed for 'imply_single_unit'
     valid_scale_words = set()
-    for idx, (word_pairs, power) in enumerate(scales):
-        for word, suffix in word_pairs:
+    for word_pairs, _power in scales:
+        for word, _suffix in word_pairs:
             valid_scale_words.add(word)
 
     valid_unit_words = set()
     for units_iter in (units, units_tens):
-        for idx, word_pairs in enumerate(units_iter):
-            for word, suffix in word_pairs:
+        for word_pairs in units_iter:
+            for word, _suffix in word_pairs:
                 valid_unit_words.add(word)
 
     valid_zero_words = {word for (word, _suffix) in units[0]}
