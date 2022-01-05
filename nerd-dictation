@@ -358,7 +358,7 @@ class from_words_to_digits:
         return "", "", word_index_init, False
 
     @staticmethod
-    def parse_number(
+    def _parse_number_as_whole_value(
         word_list: List[str],
         word_index: int,
         imply_single_unit: bool = False,
@@ -367,13 +367,6 @@ class from_words_to_digits:
         valid_scale_words = from_words_to_digits.valid_scale_words
         valid_unit_words = from_words_to_digits.valid_unit_words
         valid_zero_words = from_words_to_digits.valid_zero_words
-
-        # Check if this is a series of unit values, in this case it makes most sense to put the number in a series
-        # (think reciting a phone number).
-        ret = from_words_to_digits._parse_number_as_series_of_units(word_list, word_index)
-        if ret[2] != word_index:
-            return ret
-        del ret
 
         if imply_single_unit:
             only_scale = True
@@ -458,6 +451,23 @@ class from_words_to_digits:
 
         # Return the result plus the current.
         return "{:d}".format(result + current), suffix, word_index, allow_reformat
+
+    @staticmethod
+    def parse_number(
+        word_list: List[str],
+        word_index: int,
+        imply_single_unit: bool = False,
+    ) -> Tuple[str, str, int, bool]:
+
+        # Check if this is a series of unit values, in this case it makes most sense to put the number in a series
+        # (think reciting a phone number).
+        ret = from_words_to_digits._parse_number_as_series_of_units(word_list, word_index)
+        if ret[2] != word_index:
+            return ret
+
+        return from_words_to_digits._parse_number_as_whole_value(
+            word_list, word_index, imply_single_unit=imply_single_unit
+        )
 
     @staticmethod
     def parse_numbers_in_word_list(
