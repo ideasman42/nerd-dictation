@@ -309,18 +309,22 @@ class from_words_to_digits:
     def _parse_number_as_series_of_units(
         word_list: List[str],
         word_index: int,
-    ) -> Tuple[int, str, int]:
+    ) -> Tuple[str, str, int, bool]:
         """
         Convert a series of unit numbers into a single int.
         `one two three` -> `123`.
         """
         number_words = from_words_to_digits._number_words
 
+        # Never re-format, as interpreting this as a whole number removes trailing leading.
+        allow_reformat = False
+
         # First detect a series of numbers, e.g:
         # two four six eight
         # Should be 2468 not the result of (2+4+6+8).
         word_index_init = word_index
-        unit_numbers = []
+        unit_numbers: List[int] = []
+        increment_prev = -1
         while word_index < len(word_list):
             word_data = number_words.get(word_list[word_index])
             if word_data is None:
@@ -330,23 +334,29 @@ class from_words_to_digits:
             # Never accumulate numbers with "and" this can stay as a literal.
             if not is_final:
                 break
-            if suffix == "" and scale == 1 and increment < 10:
-                unit_numbers.append(increment)
+            if suffix == "" and scale == 1 and increment < 100:
+                # This allows speaking: "fifty fifty one"
+                # To be interpreted as 5051.
+                if unit_numbers and (increment_prev >= 20) and (increment < 10) and (increment != 0):
+                    unit_numbers[-1] += increment
+                else:
+                    unit_numbers.append(increment)
+                increment_prev = increment
                 word_index += 1
             else:
                 break
 
         if len(unit_numbers) > 1:
-            return int("".join([str(n) for n in unit_numbers])), "", word_index
+            return "".join([str(value) for value in unit_numbers]), "", word_index, allow_reformat
 
-        return 0, "", word_index_init
+        return "", "", word_index_init, False
 
     @staticmethod
     def parse_number(
         word_list: List[str],
         word_index: int,
         imply_single_unit: bool = False,
-    ) -> Tuple[int, str, int]:
+    ) -> Tuple[str, str, int, bool]:
         number_words = from_words_to_digits._number_words
         valid_scale_words = from_words_to_digits.valid_scale_words
         valid_unit_words = from_words_to_digits.valid_unit_words
@@ -361,6 +371,9 @@ class from_words_to_digits:
         if imply_single_unit:
             only_scale = True
 
+        # Allow reformatting for a regular number.
+        allow_reformat = True
+
         # Primary loop.
         current = result = 0
         suffix = ""
@@ -368,7 +381,7 @@ class from_words_to_digits:
         # This prevents "one and" from being evaluated.
         is_final = False
         word_index_final = -1
-        result_final = (0, "", word_index)
+        result_final = ("", "", word_index, allow_reformat)
 
         # Loop while splitting to break into individual words.
         while word_index < len(word_list):
@@ -407,7 +420,7 @@ class from_words_to_digits:
             word_index += 1
 
             if is_final:
-                result_final = (result + current, suffix, word_index)
+                result_final = ("{:d}".format(result + current), suffix, word_index, allow_reformat)
                 word_index_final = word_index
 
             # Once there is a suffix, don't attempt to parse extra numbers.
@@ -419,7 +432,7 @@ class from_words_to_digits:
             return result_final
 
         # Return the result plus the current.
-        return result + current, suffix, word_index
+        return "{:d}".format(result + current), suffix, word_index, allow_reformat
 
     @staticmethod
     def parse_numbers_in_word_list(
@@ -430,9 +443,14 @@ class from_words_to_digits:
         i_number_prev = -1
         while i < len(word_list):
             if word_list[i] in from_words_to_digits.valid_digit_words:
-                number, suffix, i_next = from_words_to_digits.parse_number(word_list, i, imply_single_unit=True)
+                number, suffix, i_next, allow_reformat = from_words_to_digits.parse_number(
+                    word_list, i, imply_single_unit=True
+                )
                 if i != i_next:
-                    word_list[i:i_next] = [("{:,d}".format(number) if numbers_use_separator else str(number)) + suffix]
+                    word_list[i:i_next] = [
+                        ("{:,d}".format(int(number)) if (numbers_use_separator and allow_reformat) else number)
+                        + suffix
+                    ]
 
                     if (i_number_prev != -1) and (i_number_prev + 1 != i):
                         words_between = tuple(word_list[i_number_prev + 1 : i])
