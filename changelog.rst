@@ -3,6 +3,8 @@
 Changelog
 #########
 
+- 2022/01/05: Fix bug adding where quoted numbers would accumulate,
+  e.g. "one hundred and fifty twelve" would be interpreted as "162" instead of "150 12".
 - 2022/01/05: Fix bug interpreting a series of numbers over 9, as well as stripping leading zeros.
 - 2021/10/05: Fix bug where quickly running begin/end would leave dictation enabled.
 - 2021/07/08: Add ``--sample-rate``, optionally set the sample rate used for recording.
