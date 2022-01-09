@@ -90,7 +90,7 @@ def name_of_caller(frame=1):
 # -----------------------------------------------------------------------------
 # Tests
 
-VERBOSE = True
+VERBOSE = False
 
 import unittest
 
@@ -105,7 +105,7 @@ class NumberMixIn:
         actual_output = tuple(words)
         expected_output = tuple(expected_output.split())
         if VERBOSE:
-            print("{:>38}: {!r} -> {!r}".format(name_of_caller(frame=2), words_input, " ".join(actual_output)))
+            print("{:>54}: {!r} -> {!r}".format(name_of_caller(frame=2), words_input, " ".join(actual_output)))
         self.assertEqual(actual_output, expected_output)
 
 
@@ -159,6 +159,57 @@ class TestNumberWholeAutoDelimit(unittest.TestCase, NumberMixIn):
     def test_zero(self):
         self.assertNumberFromTextEqual("two hundred and zero", "200 and 0")
         self.assertNumberFromTextEqual("two hundred and zero and one", "200 and 0 and 1")
+
+    def test_hundreds(self):
+        self.assertNumberFromTextEqual("one hundred two hundred", "100 200")
+        self.assertNumberFromTextEqual("one hundred two hundred three hundred", "100 200 300")
+
+    def test_hundreds_and_units(self):
+        self.assertNumberFromTextEqual("one hundred two hundred and one", "100 201")
+        self.assertNumberFromTextEqual("one hundred two hundred three hundred and one", "100 200 301")
+
+    def test_hundreds_complex_1(self):
+        self.assertNumberFromTextEqual("one hundred two hundred thousand and one", "100 200,001")
+
+    def test_hundreds_complex_2(self):
+        self.assertNumberFromTextEqual(
+            "one hundred and three two hundred and thirteen thirteen thousand three hundred and two",
+            ("103 " "213 " "13,302"),
+        )
+
+    def test_hundreds_complex_3(self):
+        self.assertNumberFromTextEqual(
+            (
+                "ninety two "
+                "three hundred and three "
+                "two hundred and thirteen "
+                "thirteen thousand three hundred "
+                "four hundred"
+            ),
+            ("92 " "303 " "213 " "13,300 " "400"),
+        )
+
+    def test_mixed_complex_pairs_1(self):
+        self.assertNumberFromTextEqual(
+            (
+                "fifteen million and two "
+                "three thousand and forty four hundred and three "
+                "five million and thirty three"
+            ),
+            ("15,000,002 " "7,403 " "5,000,033"),
+        )
+
+    def test_mixed_complex_pairs_2(self):
+        self.assertNumberFromTextEqual(
+            ("sixty hundred " "fifty thousand"),
+            ("6,000 " "50,000"),
+        )
+
+    def test_teen_pairs_1(self):
+        self.assertNumberFromTextEqual("nineteen thousand three thousand", "19,000 3,000")
+
+    def test_teen_pairs_2(self):
+        self.assertNumberFromTextEqual("twenty thousand three thousand", "20,000 3,000")
 
 
 if __name__ == "__main__":

@@ -312,56 +312,12 @@ class from_words_to_digits:
     ) = from_words_to_digits_setup_once()
 
     @staticmethod
-    def _parse_number_as_series_of_units(
-        word_list: List[str],
-        word_index: int,
-    ) -> Tuple[str, str, int, bool]:
-        """
-        Convert a series of unit numbers into a single int.
-        `one two three` -> `123`.
-        """
-        number_words = from_words_to_digits._number_words
-
-        # Never re-format, as interpreting this as a whole number removes trailing leading.
-        allow_reformat = False
-
-        # First detect a series of numbers, e.g:
-        # two four six eight
-        # Should be 2468 not the result of (2+4+6+8).
-        word_index_init = word_index
-        unit_numbers: List[int] = []
-        increment_prev = -1
-        while word_index < len(word_list):
-            word_data = number_words.get(word_list[word_index])
-            if word_data is None:
-                break
-
-            scale, increment, suffix, is_final = word_data
-            # Never accumulate numbers with "and" this can stay as a literal.
-            if not is_final:
-                break
-            if suffix == "" and scale == 1 and increment < 100:
-                # This allows speaking: "fifty fifty one"
-                # To be interpreted as 5051.
-                if unit_numbers and (increment_prev >= 20) and (increment < 10) and (increment != 0):
-                    unit_numbers[-1] += increment
-                else:
-                    unit_numbers.append(increment)
-                increment_prev = increment
-                word_index += 1
-            else:
-                break
-
-        if len(unit_numbers) > 1:
-            return "".join([str(value) for value in unit_numbers]), "", word_index, allow_reformat
-
-        return "", "", word_index_init, False
-
-    @staticmethod
     def _parse_number_as_whole_value(
         word_list: List[str],
+        word_list_len: int,
         word_index: int,
         imply_single_unit: bool = False,
+        force_single_units: bool = False,
     ) -> Tuple[str, str, int, bool]:
         number_words = from_words_to_digits._number_words
         valid_scale_words = from_words_to_digits.valid_scale_words
@@ -381,13 +337,15 @@ class from_words_to_digits:
         # This prevents "one and" from being evaluated.
         is_final = False
         increment_final = 0
+        increment_final_real = 0
         scale_final = 0
         word_index_final = -1
         result_final = ("", "", word_index, allow_reformat)
 
         # Loop while splitting to break into individual words.
-        while word_index < len(word_list):
+        while word_index < word_list_len:
             word_data = number_words.get(word_list[word_index])
+
             if word_data is None:
                 # raise Exception('Illegal word: ' + word)
                 break
@@ -399,6 +357,10 @@ class from_words_to_digits:
 
             # Use the index by the multiplier.
             scale, increment, suffix, is_final = word_data
+            increment_real = increment
+            if force_single_units:
+                if increment != 0:
+                    increment = 1
 
             # This prevents "three and two" from resolving to "5".
             # which we never want, unlike "three hundred and two" which resolves to "302"
@@ -413,7 +375,7 @@ class from_words_to_digits:
                 # - "ninety fifty"
                 if scale_final == scale:
                     if word_list[word_index] in valid_unit_words and word_list[word_index_final] in valid_unit_words:
-                        if not (increment_final >= 20 and increment < 10):
+                        if not (increment_final_real >= 20 and increment_real < 10):
                             break
 
             if imply_single_unit:
@@ -425,6 +387,7 @@ class from_words_to_digits:
                         current = 1 * scale
                         word_index += 1
                         break
+
 
             current = (current * scale) + increment
 
@@ -440,6 +403,8 @@ class from_words_to_digits:
                 word_index_final = word_index
                 scale_final = scale
                 increment_final = increment
+                increment_final_real = increment_real
+
 
             # Once there is a suffix, don't attempt to parse extra numbers.
             if suffix:
@@ -453,20 +418,145 @@ class from_words_to_digits:
         return "{:d}".format(result + current), suffix, word_index, allow_reformat
 
     @staticmethod
+    def _allow_follow_on_word(w_prev: str, w: str) -> bool:
+        valid_unit_words = from_words_to_digits.valid_unit_words
+        number_words = from_words_to_digits._number_words
+
+        if not w_prev in valid_unit_words:
+            return False
+        if not w in valid_unit_words:
+            return False
+        increment_prev = number_words[w_prev][1]
+        increment = number_words[w][1]
+        if (increment_prev >= 20) and (increment < 10) and (increment != 0):
+            return True
+        return False
+
+    @staticmethod
+    def parse_number_calc_delimiter_from_series(
+        word_list: List[str],
+        word_index: int,
+        word_index_len: int,
+    ) -> int:
+
+        valid_unit_words = from_words_to_digits.valid_unit_words
+        number_words = from_words_to_digits._number_words
+
+        i = word_index
+        i_span_beg = word_index
+        w_prev = ""
+        result_prev = None
+        result_test = None
+        while i < word_index_len:
+            w = word_list[i]
+            if w not in number_words:
+                break
+
+            if (i != word_index) and from_words_to_digits._allow_follow_on_word(word_list[i - 1], w):
+                # Don't set `w_prev` so we can detect "thirteen and fifty five" without the last "five" delimiting.
+                pass
+            else:
+                if (w_prev not in {"", "and"}) and w in valid_unit_words:
+                    # Exception ... allow "thirty three", two words...
+                    result_prev = result_test
+                    result_test = from_words_to_digits._parse_number_as_whole_value(
+                        word_list,
+                        i,  # Limit.
+                        i_span_beg,  # Split start.
+                        force_single_units=True,
+                    )
+                    assert result_test[2] == i
+
+                    if result_prev:
+                        if len(result_prev[0]) == len(result_test[0]):
+                            return result_prev[2]
+
+                    i_span_beg = i
+                w_prev = w
+            i += 1
+
+        result_prev = result_test
+        result_test = from_words_to_digits._parse_number_as_whole_value(
+            word_list,
+            i,  # Limit.
+            i_span_beg,  # Split start.
+            force_single_units=True,
+        )
+
+        if result_prev:
+            if len(result_prev[0]) == len(result_test[0]):
+                return result_prev[2]
+
+        return word_index_len
+
+    @staticmethod
+    def parse_number_calc_delimiter_from_slide(
+        word_list: List[str],
+        word_index: int,
+        word_index_len: int,
+    ) -> int:
+
+        valid_unit_words = from_words_to_digits.valid_unit_words
+        number_words = from_words_to_digits._number_words
+        i = word_index
+        w_prev = ""
+        while i < word_index_len:
+            w = word_list[i]
+            if w not in number_words:
+                break
+            if (i != word_index) and from_words_to_digits._allow_follow_on_word(word_list[i - 1], w):
+                # Don't set `w_prev` so we can detect "thirteen and fifty five" without the last "five" delimiting.
+                pass
+            else:
+                if (w_prev not in {"", "and"}) and w in valid_unit_words:
+                    result_test_lhs = from_words_to_digits._parse_number_as_whole_value(
+                        word_list,
+                        i,  # Limit.
+                        word_index,  # Split start.
+                        force_single_units=True,
+                    )
+                    result_test_rhs = from_words_to_digits._parse_number_as_whole_value(
+                        word_list,
+                        word_index_len,  # Limit.
+                        i,  # Split start.
+                        force_single_units=True,
+                    )
+
+                    # If the number on the right is larger, split here.
+                    if len(result_test_lhs[0]) <= len(result_test_rhs[0]):
+                        return result_test_lhs[2]
+
+                w_prev = w
+            i += 1
+
+        return word_index_len
+
+    @staticmethod
     def parse_number(
         word_list: List[str],
         word_index: int,
         imply_single_unit: bool = False,
     ) -> Tuple[str, str, int, bool]:
 
-        # Check if this is a series of unit values, in this case it makes most sense to put the number in a series
-        # (think reciting a phone number).
-        ret = from_words_to_digits._parse_number_as_series_of_units(word_list, word_index)
-        if ret[2] != word_index:
-            return ret
+        word_list_len = len(word_list)
+
+        # Delimit, prevent accumulating "one hundred two hundred" -> "300" for example.
+        word_list_len = from_words_to_digits.parse_number_calc_delimiter_from_series(
+            word_list,
+            word_index,
+            word_list_len,
+        )
+        word_list_len = from_words_to_digits.parse_number_calc_delimiter_from_slide(
+            word_list,
+            word_index,
+            word_list_len,
+        )
 
         return from_words_to_digits._parse_number_as_whole_value(
-            word_list, word_index, imply_single_unit=imply_single_unit
+            word_list,
+            word_list_len,
+            word_index,
+            imply_single_unit=imply_single_unit,
         )
 
     @staticmethod
@@ -512,6 +602,24 @@ class from_words_to_digits:
                     i_number_prev = i
                     i -= 1
             i += 1
+
+        # Group numbers - recite single digit phone numbers for example.
+        # This could be optional, but generally seems handy (good default behavior),
+        # e.g. "twenty twenty" -> "2020".
+        i = 0
+        while i < len(word_list):
+            if word_list[i].isdigit() and len(word_list[i]) <= 2:
+                j = i + 1
+                while j < len(word_list):
+                    if word_list[j].isdigit() and len(word_list[j]) <= 2:
+                        j += 1
+                    else:
+                        break
+                if i + 1 != j:
+                    word_list[i:j] = ["".join(word_list[i:j])]
+                i = j
+            else:
+                i += 1
 
 
 # -----------------------------------------------------------------------------
