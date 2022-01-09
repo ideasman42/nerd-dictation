@@ -314,6 +314,7 @@ class from_words_to_digits:
     @staticmethod
     def _parse_number_as_series_of_units(
         word_list: List[str],
+        word_index_len: int,
         word_index: int,
     ) -> Tuple[str, str, int, bool]:
         """
@@ -331,7 +332,7 @@ class from_words_to_digits:
         word_index_init = word_index
         unit_numbers: List[int] = []
         increment_prev = -1
-        while word_index < len(word_list):
+        while word_index < word_index_len:
             word_data = number_words.get(word_list[word_index])
             if word_data is None:
                 break
@@ -360,6 +361,7 @@ class from_words_to_digits:
     @staticmethod
     def _parse_number_as_whole_value(
         word_list: List[str],
+        word_list_len: int,
         word_index: int,
         imply_single_unit: bool = False,
     ) -> Tuple[str, str, int, bool]:
@@ -386,7 +388,7 @@ class from_words_to_digits:
         result_final = ("", "", word_index, allow_reformat)
 
         # Loop while splitting to break into individual words.
-        while word_index < len(word_list):
+        while word_index < word_list_len:
             word_data = number_words.get(word_list[word_index])
             if word_data is None:
                 # raise Exception('Illegal word: ' + word)
@@ -453,20 +455,118 @@ class from_words_to_digits:
         return "{:d}".format(result + current), suffix, word_index, allow_reformat
 
     @staticmethod
+    def parse_number_calc_delimiter(
+        word_list: List[str],
+        word_index: int,
+        word_index_len: int,
+    ) -> int:
+
+        valid_scale_words = from_words_to_digits.valid_scale_words
+        valid_unit_words = from_words_to_digits.valid_unit_words
+        number_words = from_words_to_digits._number_words
+
+        # # First delimited by a series of numbers!
+        # i = word_index
+        # was_unit = False
+        # print("=============", i)
+        # increment_prev = -1
+        # while i < word_index_len:
+        #     w = word_list[i]
+        #     if w in valid_unit_words:
+        #         word_data = number_words.get(w)
+        #         scale, increment, suffix, is_final = word_data
+        #         print("W", w)
+        #         if suffix == "" and scale == 1 and increment < 100:
+        #             if was_unit:
+        #                 # This allows speaking: "fifty fifty one"
+        #                 # To be interpreted as 5051.
+        #                 if (increment_prev >= 20) and (increment < 10) and (increment != 0):
+        #                     pass
+        #                 else:
+        #                     word_index_len = i
+        #                     print("ORIG", word_list)
+        #                     print("CLAMP", word_list[word_index:word_index_len])
+        #                     break
+        #             was_unit = True
+        #             increment_prev = increment
+        #         else:
+        #             was_unit = False
+        #     else:
+        #         was_unit = False
+
+        #     i += 1
+
+
+        skip = set()
+        i = word_index
+        while i < word_index_len:
+            if word_list[i] == "and":
+                skip.add(i)
+                i += 1
+                while i < word_index_len and word_list[i] in valid_unit_words:
+                    skip.add(i)
+                    i += 1
+            else:
+                i += 1
+
+        scales = []
+        i = word_index
+        i_beg = word_index
+        was_scale = False
+        while i < word_index_len:
+            if i not in skip:
+                w = word_list[i]
+                if w in valid_scale_words:
+                    word_data = number_words.get(w)
+                    scale, increment, suffix, is_final = word_data
+                    if was_scale:
+                        scales[-1] = ((scales[-1][0][0], i), scales[-1][1] * scale)
+                    else:
+                        scales.append(((i_beg, i), scale))
+                    was_scale = True
+                else:
+                    i_beg = i
+                    was_scale = False
+            i += 1
+        print("SCALE:", scales)
+
+        if scales:
+            s_prev = scales[0][1]
+            for n in range(1, len(scales)):
+                s_curr = scales[n][1]
+                # SEMI VALID?
+                # nn = n + 1
+                # while nn < len(scales):
+                #     s_curr *= scales[nn][1]
+                #     nn += 1
+                if s_prev <= s_curr:
+                    # print("XXX", word_index_len, scales[n - 1][1] + 1)
+                    return scales[n - 1][0][1] + 1
+                s_prev = s_curr
+
+        return word_index_len
+
+    @staticmethod
     def parse_number(
         word_list: List[str],
         word_index: int,
         imply_single_unit: bool = False,
     ) -> Tuple[str, str, int, bool]:
 
+        print("AAAAAAA", word_index)
+        word_list_len = len(word_list)
+
         # Check if this is a series of unit values, in this case it makes most sense to put the number in a series
         # (think reciting a phone number).
-        ret = from_words_to_digits._parse_number_as_series_of_units(word_list, word_index)
-        if ret[2] != word_index:
-            return ret
+        # ret = from_words_to_digits._parse_number_as_series_of_units(word_list, word_list_len, word_index)
+        # if ret[2] != word_index:
+        #     return ret
+
+        word_list_len = from_words_to_digits.parse_number_calc_delimiter(word_list, word_index, word_list_len)
+        print("V", word_list[word_index:word_list_len])
 
         return from_words_to_digits._parse_number_as_whole_value(
-            word_list, word_index, imply_single_unit=imply_single_unit
+            word_list, word_list_len, word_index, imply_single_unit=imply_single_unit
         )
 
     @staticmethod
