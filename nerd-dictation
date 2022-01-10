@@ -68,7 +68,7 @@ def run_xdotool(subcommand: str, payload: List[str]) -> None:
         "--clearmodifiers",
     ] + payload
     try:
-        subprocess.check_output(cmd).decode("utf-8")
+        subprocess.check_output(cmd)
     except FileNotFoundError as ex:
         print("Command {!r} not found: {!s}".format(cmd_base, ex))
         sys.exit(1)
