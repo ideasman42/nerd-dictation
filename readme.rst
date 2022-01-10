@@ -162,7 +162,7 @@ positional arguments:
     :end:               End dictation.
     :cancel:            Cancel dictation.
 
-optional arguments:
+options:
   -h, --help          show this help message and exit
 
 Subcommand: ``begin``
@@ -183,7 +183,7 @@ usage::
 This creates the directory used to store internal data, so other commands such as sync can be performed.
 
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --cookie FILE_PATH    Location for writing a temporary cookie (this file is monitored to begin/end dictation).
   --vosk-model-dir DIR  Path to the VOSK model, see: https://alphacephei.com/vosk/models
@@ -235,7 +235,7 @@ usage::
 This ends dictation, causing the text to be typed in.
 
 
-optional arguments:
+options:
   -h, --help          show this help message and exit
   --cookie FILE_PATH  Location for writing a temporary cookie (this file is monitored to begin/end dictation).
 
@@ -249,7 +249,7 @@ usage::
 This cancels dictation.
 
 
-optional arguments:
+options:
   -h, --help          show this help message and exit
   --cookie FILE_PATH  Location for writing a temporary cookie (this file is monitored to begin/end dictation).
 
