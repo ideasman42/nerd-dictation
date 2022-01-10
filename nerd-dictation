@@ -61,12 +61,20 @@ USER_CONFIG = "nerd-dictation.py"
 
 
 def run_xdotool(subcommand: str, payload: List[str]) -> None:
+    cmd_base = "xdotool"
     cmd = [
-        "xdotool",
+        cmd_base,
         subcommand,
         "--clearmodifiers",
     ] + payload
-    subprocess.check_output(cmd).decode("utf-8")
+    try:
+        subprocess.check_output(cmd).decode("utf-8")
+    except FileNotFoundError as ex:
+        print("Command {!r} not found: {!s}".format(cmd_base, ex))
+        sys.exit(1)
+
+    # Don't catch other kinds of exceptions as they should never happen
+    # and can be considered a severe error which doesn't need to be made "user friendly".
 
 
 def touch(filepath: str, time: Optional[float] = None) -> None:
@@ -388,7 +396,6 @@ class from_words_to_digits:
                         word_index += 1
                         break
 
-
             current = (current * scale) + increment
 
             # If larger than 100 then push for a round 2.
@@ -404,7 +411,6 @@ class from_words_to_digits:
                 scale_final = scale
                 increment_final = increment
                 increment_final_real = increment_real
-
 
             # Once there is a suffix, don't attempt to parse extra numbers.
             if suffix:

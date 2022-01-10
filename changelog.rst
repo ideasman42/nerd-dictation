@@ -3,6 +3,7 @@
 Changelog
 #########
 
+- 2022/01/10: Improve error message when ``xdotool`` is not found.
 - 2022/01/09: Fix ``--numbers-as-digits`` bug where numbers with the same decimal place value where accumulated,
   e.g. "one hundred two hundred" is now interrupted as "100 200" instead of "10,200".
 - 2022/01/05: Fix ``--numbers-as-digits`` bug adding where quoted numbers would accumulate,
