@@ -24,6 +24,9 @@ WORD_REPLACE = {
     "i": "I",
     "api": "API",
     "linux": "Linux",
+
+    # It's also possible to ignore words entirely.
+    "um": "",
 }
 
 # Regular expressions allow partial words to be replaced.
