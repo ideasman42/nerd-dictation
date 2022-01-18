@@ -309,7 +309,7 @@ Limitations
 Further Work
 ============
 
-- And a general solution to capitalize words (proper nouns for example).
+- Support a general solution to capitalize words (proper nouns for example).
 - Wayland support (this should be quite simple to support and mainly relies on a replacement for ``xdotool``).
 - Add a ``setup.py`` for easy installation on uses systems.
 - Possibly other speech to text engines *(only if they provide some significant benefits)*.
