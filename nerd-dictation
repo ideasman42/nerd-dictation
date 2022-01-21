@@ -182,7 +182,7 @@ def user_config_as_module_or_none() -> Optional[ModuleType]:
     try:
         user_config = execfile(user_config_path)
     except Exception as ex:
-        sys.stderr.write("Failed to run %r with error %s\n" % (user_config, str(ex)))
+        sys.stderr.write('Failed to run "{:s}" with error: {:s}\n'.format(user_config_path, str(ex)))
         sys.exit(1)
 
     return user_config
