@@ -77,14 +77,14 @@ def run_xdotool(subcommand: str, payload: List[str]) -> None:
     # and can be considered a severe error which doesn't need to be made "user friendly".
 
 
-def touch(filepath: str, time: Optional[float] = None) -> None:
+def touch(filepath: str, mtime: Optional[float] = None) -> None:
     if os.path.exists(filepath):
-        os.utime(filepath, None if time is None else (time, time))
+        os.utime(filepath, None if mtime is None else (mtime, mtime))
     else:
-        open(filepath, "a").close()
-        if time is not None:
+        open(filepath, "ab").close()
+        if mtime is not None:
             try:
-                os.utime(filepath, (time, time))
+                os.utime(filepath, (mtime, mtime))
             except FileNotFoundError:
                 pass
 
@@ -356,7 +356,7 @@ class from_words_to_digits:
 
         # This prevents "one and" from being evaluated.
         is_final = False
-        increment_final = 0
+        # increment_final = 0  # UNUSED.
         increment_final_real = 0
         scale_final = 0
         word_index_final = -1
@@ -421,7 +421,7 @@ class from_words_to_digits:
                 result_final = ("{:d}".format(result + current), suffix, word_index, allow_reformat)
                 word_index_final = word_index
                 scale_final = scale
-                increment_final = increment
+                # increment_final = increment
                 increment_final_real = increment_real
 
             # Once there is a suffix, don't attempt to parse extra numbers.
@@ -941,7 +941,7 @@ def main_begin(
 
     # Force zero time-stamp so a fast begin/end (tap) action
     # doesn't leave dictation running.
-    touch(path_to_cookie, time=0)
+    touch(path_to_cookie, mtime=0)
     cookie_timestamp = file_mtime_or_none(path_to_cookie)
     if cookie_timestamp != 0:
         sys.stderr.write("Cookie removed after right after creation (unlikely but respect the request)\n")
