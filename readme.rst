@@ -170,7 +170,8 @@ Subcommand: ``begin``
 
 usage::
 
-       nerd-dictation begin [-h] [--cookie FILE_PATH] [--vosk-model-dir DIR]
+       nerd-dictation begin [-h] [--cookie FILE_PATH] [--config FILE]
+                            [--vosk-model-dir DIR]
                             [--pulse-device-name IDENTIFIER]
                             [--sample-rate HZ] [--defer-output] [--continuous]
                             [--timeout SECONDS] [--idle-time SECONDS]
@@ -186,6 +187,8 @@ This creates the directory used to store internal data, so other commands such a
 options:
   -h, --help            show this help message and exit
   --cookie FILE_PATH    Location for writing a temporary cookie (this file is monitored to begin/end dictation).
+  --config FILE         Override the file used for the user configuration
+                        Use an empty string to disable a custom configuration.
   --vosk-model-dir DIR  Path to the VOSK model, see: https://alphacephei.com/vosk/models
   --pulse-device-name IDENTIFIER
                         The name of the pulse-audio device to use for recording.

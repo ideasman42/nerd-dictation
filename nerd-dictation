@@ -125,6 +125,9 @@ def execfile(filepath: str, mod: Optional[ModuleType] = None) -> Optional[Module
     """
     import importlib.util
 
+    if not os.path.exists(filepath):
+        raise FileNotFoundError('File not found "{:s}"'.format(filepath))
+
     mod_name = "__main__"
     mod_spec = importlib.util.spec_from_file_location(mod_name, filepath)
     if mod_spec is None:
@@ -173,11 +176,20 @@ def calc_user_config_path(rest: Optional[str]) -> str:
     return base
 
 
-def user_config_as_module_or_none() -> Optional[ModuleType]:
+def user_config_as_module_or_none(
+    config_override: Optional[str],
+) -> Optional[ModuleType]:
 
-    user_config_path = calc_user_config_path(USER_CONFIG)
-    if not os.path.exists(user_config_path):
+    # Explicitly ask for no configuration.
+    if config_override == "":
         return None
+    if config_override is None:
+        user_config_path = calc_user_config_path(USER_CONFIG)
+        if not os.path.exists(user_config_path):
+            return None
+    else:
+        user_config_path = config_override
+        # Allow the exception for a custom configuration.
 
     try:
         user_config = execfile(user_config_path)
@@ -895,6 +907,7 @@ def main_begin(
     idle_time: float = 0.0,
     delay_exit: float = 0.0,
     punctuate_from_previous_timeout: float = 0.0,
+    config_override: Optional[str],
     output: str = "TYPE",
 ) -> None:
     """
@@ -975,7 +988,7 @@ def main_begin(
         # Load the user configuration (when found).
         #
         if process_fn_is_first:
-            user_config = user_config_as_module_or_none()
+            user_config = user_config_as_module_or_none(config_override=config_override)
 
         #
         # User text post processing (when found).
@@ -1088,6 +1101,19 @@ This creates the directory used to store internal data, so other commands such a
     )
 
     argparse_generic_command_cookie(subparse)
+
+    subparse.add_argument(
+        "--config",
+        default=None,
+        dest="config",
+        type=str,
+        metavar="FILE",
+        help=(
+            "Override the file used for the user configuration\n"
+            "Use an empty string to disable a custom configuration."
+        ),
+        required=False,
+    )
 
     subparse.add_argument(
         "--vosk-model-dir",
@@ -1279,6 +1305,7 @@ This creates the directory used to store internal data, so other commands such a
             idle_time=min(args.idle_time, 0.5),
             delay_exit=args.delay_exit,
             punctuate_from_previous_timeout=args.punctuate_from_previous_timeout,
+            config_override=args.config,
             output=args.output,
         ),
     )
