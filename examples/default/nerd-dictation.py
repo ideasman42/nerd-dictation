@@ -39,7 +39,7 @@ WORD_REPLACE_REGEX = tuple(
 )
 
 # -----------------------------------------------------------------------------
-# Add punctuation
+# Add Punctuation
 
 CLOSING_PUNCTUATION = {
     "period": ".",
@@ -61,10 +61,10 @@ def nerd_dictation_process(text):
         text = match.sub(replacement, text)
 
     for match, replacement in CLOSING_PUNCTUATION.items():
-        text = text.replace(f' {match}', replacement)
+        text = text.replace(" " + match, replacement)
 
     for match, replacement in OPENING_PUNCTUATION.items():
-        text = text.replace(f'{match} ', replacement)
+        text = text.replace(match + " ", replacement)
 
     words = text.split(" ")
 
