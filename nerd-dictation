@@ -714,6 +714,7 @@ def text_from_vosk_pipe(
     progressive: bool,
     progressive_continuous: bool,
     sample_rate: int,
+    use_sox: bool,
     pulse_device_name: str = "",
 ) -> bool:
     # Delay some imports until recording has started to avoid minor delays.
@@ -726,15 +727,31 @@ def text_from_vosk_pipe(
         )
         sys.exit(1)
 
-    cmd = (
-        "parec",
-        "--record",
-        "--rate=%d" % sample_rate,
-        "--channels=1",
-        *(("--device=%s" % pulse_device_name,) if pulse_device_name else ()),
-        "--format=s16ne",
-        "--latency=10",
-    )
+    if use_sox:
+        cmd = (
+            "sox",
+            "-q",
+            "-d",
+            "--buffer", "1000",
+            "-r", "%d" % sample_rate,
+            "-b", "16",
+            "-e", "signed-integer",
+            "-c", "1",
+            "-t", "raw",
+            "-L",
+            "-",
+        )
+    else:
+        cmd = (
+            "parec",
+            "--record",
+            "--rate=%d" % sample_rate,
+            "--channels=1",
+            *(("--device=%s" % pulse_device_name,) if pulse_device_name else ()),
+            "--format=s16ne",
+            "--latency=10",
+        )
+
     ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
     stdout = ps.stdout
@@ -898,6 +915,7 @@ def main_begin(
     path_to_cookie: str = "",
     pulse_device_name: str = "",
     sample_rate: int = 44100,
+    use_sox: bool = False,
     progressive: bool = False,
     progressive_continuous: bool = False,
     full_sentence: bool = False,
@@ -1042,6 +1060,7 @@ def main_begin(
         vosk_model_dir=vosk_model_dir,
         pulse_device_name=pulse_device_name,
         sample_rate=sample_rate,
+        use_sox=use_sox,
         timeout=timeout,
         idle_time=idle_time,
         progressive=progressive,
@@ -1134,6 +1153,24 @@ This creates the directory used to store internal data, so other commands such a
         help=(
             "The name of the pulse-audio device to use for recording.\n"
             'See the output of "pactl list sources" to find device names (using the identifier following "Name:").'
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--sox",
+        dest="use_sox",
+        default=False,
+        action="store_true",
+        help=(
+            "Use sox instead of parec for audio input.\n"
+            "Set environment variable AUDIODEV to use a specific input device.\n"
+            "Other sox options can be set (such as gain) by setting environment variable SOX_OPTS.\n"
+            "You can test various devices by: \n"
+            "     arecord -l || cat /proc/asound/cards  || cat /dev/sndstat     # List audio devices.\n"
+            "     # Example, use card 2, subdevice 0.  Record 10 seconds and playback to default output,\n"
+            "     AUDIODEV='hw:2,0'  sox -d --buffer 1000 -r 16000 -b 16 -e signed-integer -c 1  -t wav -L  test.wav trim 0 10\n"
+            "     sox test.wav -d"
         ),
         required=False,
     )
@@ -1296,6 +1333,7 @@ This creates the directory used to store internal data, so other commands such a
             vosk_model_dir=args.vosk_model_dir,
             pulse_device_name=args.pulse_device_name,
             sample_rate=args.sample_rate,
+            use_sox=args.use_sox,
             progressive=not (args.defer_output or args.output == "STDOUT"),
             progressive_continuous=args.progressive_continuous,
             full_sentence=args.full_sentence,
