@@ -69,7 +69,7 @@ Dependencies
 
 - Python 3.
 - The VOSK-API.
-- ``parec`` command (for recording from pulse-audio).
+- ``parec`` command for recording from pulse-audio (default) or ``sox`` command as alternative.
 - ``xdotool`` command to simulate keyboard input.
 
 
@@ -171,7 +171,7 @@ Subcommand: ``begin``
 usage::
 
        nerd-dictation begin [-h] [--cookie FILE_PATH] [--config FILE]
-                            [--vosk-model-dir DIR]
+                            [--vosk-model-dir DIR] [--input INPUT_METHOD]
                             [--pulse-device-name IDENTIFIER]
                             [--sample-rate HZ] [--defer-output] [--continuous]
                             [--timeout SECONDS] [--idle-time SECONDS]
@@ -190,6 +190,17 @@ options:
   --config FILE         Override the file used for the user configuration
                         Use an empty string to disable a custom configuration.
   --vosk-model-dir DIR  Path to the VOSK model, see: https://alphacephei.com/vosk/models
+  --input INPUT_METHOD  Specify input method to be used for audio recording. Valid methods: PAREC, SOX
+                          PAREC (external command, default)
+                              See --pulse-device-name option to use a specific pulse-audio device.
+                          SOX (external command)
+                              Set environment variable AUDIODEV to use a specific input device.
+                              Other sox options can be set (such as gain) by setting environment variable SOX_OPTS.
+                              You can test various devices by:
+                                arecord -l || cat /proc/asound/cards  || cat /dev/sndstat     # List audio devices.
+                                # Example, use card 2, subdevice 0.  Record 10 seconds and playback to default output,
+                                AUDIODEV='hw:2,0'  sox -d --buffer 1000 -r 16000 -b 16 -e signed-integer -c 1  -t wav -L  test.wav trim 0 10
+                                sox test.wav -d
   --pulse-device-name IDENTIFIER
                         The name of the pulse-audio device to use for recording.
                         See the output of "pactl list sources" to find device names (using the identifier following "Name:").

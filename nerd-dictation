@@ -714,6 +714,7 @@ def text_from_vosk_pipe(
     progressive: bool,
     progressive_continuous: bool,
     sample_rate: int,
+    input_method: str,
     pulse_device_name: str = "",
 ) -> bool:
     # Delay some imports until recording has started to avoid minor delays.
@@ -726,15 +727,41 @@ def text_from_vosk_pipe(
         )
         sys.exit(1)
 
-    cmd = (
-        "parec",
-        "--record",
-        "--rate=%d" % sample_rate,
-        "--channels=1",
-        *(("--device=%s" % pulse_device_name,) if pulse_device_name else ()),
-        "--format=s16ne",
-        "--latency=10",
-    )
+    if input_method == "PAREC":
+        cmd = (
+            "parec",
+            "--record",
+            "--rate=%d" % sample_rate,
+            "--channels=1",
+            *(("--device=%s" % pulse_device_name,) if pulse_device_name else ()),
+            "--format=s16ne",
+            "--latency=10",
+        )
+    elif input_method == "SOX":
+        cmd = (
+            "sox",
+            "-q",
+            "-V1",
+            "-d",
+            "--buffer",
+            "1000",
+            "-r",
+            "%d" % sample_rate,
+            "-b",
+            "16",
+            "-e",
+            "signed-integer",
+            "-c",
+            "1",
+            "-t",
+            "raw",
+            "-L",
+            "-",
+        )
+    else:
+        sys.stderr.write("--input %r not supported.\n" % input_method)
+        sys.exit(1)
+
     ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
     stdout = ps.stdout
@@ -898,6 +925,7 @@ def main_begin(
     path_to_cookie: str = "",
     pulse_device_name: str = "",
     sample_rate: int = 44100,
+    input_method: str = "PAREC",
     progressive: bool = False,
     progressive_continuous: bool = False,
     full_sentence: bool = False,
@@ -1042,6 +1070,7 @@ def main_begin(
         vosk_model_dir=vosk_model_dir,
         pulse_device_name=pulse_device_name,
         sample_rate=sample_rate,
+        input_method=input_method,
         timeout=timeout,
         idle_time=idle_time,
         progressive=progressive,
@@ -1263,6 +1292,29 @@ This creates the directory used to store internal data, so other commands such a
     )
 
     subparse.add_argument(
+        "--input",
+        dest="input_method",
+        default="PAREC",
+        type=str,
+        metavar="INPUT_METHOD",
+        choices=("PAREC", "SOX"),
+        help=(
+            "Specify input method to be used for audio recording. Valid methods: PAREC, SOX\n"
+            "  PAREC (external command, default)\n"
+            "      See --pulse-device-name option to use a specific pulse-audio device.\n"
+            "  SOX (external command)\n"
+            "      Set environment variable AUDIODEV to use a specific input device.\n"
+            "      Other sox options can be set (such as gain) by setting environment variable SOX_OPTS.\n"
+            "      You can test various devices by: \n"
+            "        arecord -l || cat /proc/asound/cards  || cat /dev/sndstat     # List audio devices.\n"
+            "        # Example, use card 2, subdevice 0.  Record 10 seconds and playback to default output,\n"
+            "        AUDIODEV='hw:2,0'  sox -d --buffer 1000 -r 16000 -b 16 -e signed-integer -c 1  -t wav -L  test.wav trim 0 10\n"
+            "        sox test.wav -d"
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
         "--output",
         dest="output",
         default="SIMULATE_INPUT",
@@ -1296,6 +1348,7 @@ This creates the directory used to store internal data, so other commands such a
             vosk_model_dir=args.vosk_model_dir,
             pulse_device_name=args.pulse_device_name,
             sample_rate=args.sample_rate,
+            input_method=args.input_method,
             progressive=not (args.defer_output or args.output == "STDOUT"),
             progressive_continuous=args.progressive_continuous,
             full_sentence=args.full_sentence,
