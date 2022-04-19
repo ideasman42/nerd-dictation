@@ -291,7 +291,7 @@ def from_words_to_digits_setup_once() -> Tuple[
             number_words[word] = (1, idx * 10, suffix, True)
     for word_pairs, power in scales:
         for word, suffix in word_pairs:
-            number_words[word] = (10 ** power, 0, suffix, True)
+            number_words[word] = (10**power, 0, suffix, True)
 
     # Needed for 'imply_single_unit'
     valid_scale_words = set()
