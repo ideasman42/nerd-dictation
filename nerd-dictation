@@ -1156,13 +1156,13 @@ This creates the directory used to store internal data, so other commands such a
         dest="input_method",
         default="parec",
         type=str,
-        metavar="CMD",
+        metavar="INPUT_METHOD",
         choices=['parec', 'sox'],
         help=(
-            "Specify command to be used for audio recording. Valid commands: parec, sox\n"
-            "  parec (default)\n"
+            "Specify input method to be used for audio recording. Valid methods: parec, sox\n"
+            "  parec (external command, default)\n"
             "      See --pulse-device-name option to use a specific pulse-audio device.\n"
-            "  sox\n"
+            "  sox (external command)\n"
             "      Set environment variable AUDIODEV to use a specific input device.\n"
             "      Other sox options can be set (such as gain) by setting environment variable SOX_OPTS.\n"
             "      You can test various devices by: \n"
