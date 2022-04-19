@@ -193,6 +193,14 @@ options:
   --pulse-device-name IDENTIFIER
                         The name of the pulse-audio device to use for recording.
                         See the output of "pactl list sources" to find device names (using the identifier following "Name:").
+  --sox                 Use sox instead of parec for audio input.
+                        Set environment variable AUDIODEV to use a specific input device.
+                        Other sox options can be set (such as gain) by setting environment variable SOX_OPTS.
+                        You can test various devices by:
+                             arecord -l || cat /proc/asound/cards  || cat /dev/sndstat     # List audio devices.
+                             # Example, use card 2, subdevice 0.  Record 10 seconds and playback to default output,
+                             AUDIODEV='hw:2,0'  sox -d --buffer 1000 -r 16000 -b 16 -e signed-integer -c 1  -t wav -L  test.wav trim 0 10
+                             sox test.wav -d
   --sample-rate HZ      The sample rate to use for recording (in Hz).
                         Defaults to 44100.
   --defer-output        When enabled, output is deferred until exiting.
