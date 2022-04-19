@@ -754,7 +754,7 @@ def text_from_vosk_pipe(
         )
     else:
         sys.stderr.write(
-            "--input-method %r not supported.\n"
+            "--input %r not supported.\n"
             % input_method
         )
         sys.exit(1)
@@ -1152,7 +1152,7 @@ This creates the directory used to store internal data, so other commands such a
     )
 
     subparse.add_argument(
-        "--input-method",
+        "--input",
         dest="input_method",
         default="parec",
         type=str,

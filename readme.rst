@@ -172,7 +172,7 @@ usage::
 
        nerd-dictation begin [-h] [--cookie FILE_PATH] [--config FILE]
                             [--vosk-model-dir DIR]
-                            [--input-method INPUT_METHOD] [--pulse-device-name IDENTIFIER]
+                            [--input INPUT_METHOD] [--pulse-device-name IDENTIFIER]
                             [--sample-rate HZ] [--defer-output] [--continuous]
                             [--timeout SECONDS] [--idle-time SECONDS]
                             [--delay-exit SECONDS]
@@ -190,8 +190,7 @@ options:
   --config FILE         Override the file used for the user configuration
                         Use an empty string to disable a custom configuration.
   --vosk-model-dir DIR  Path to the VOSK model, see: https://alphacephei.com/vosk/models
-  --input-method INPUT_METHOD
-                        Specify input method to be used for audio recording. Valid methods: parec, sox
+  --input INPUT_METHOD  Specify input method to be used for audio recording. Valid methods: parec, sox
                           parec (external command, default)
                               See --pulse-device-name option to use a specific pulse-audio device.
                           sox (external command)

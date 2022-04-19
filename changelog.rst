@@ -3,7 +3,7 @@
 Changelog
 #########
 
-- 2022/04/18: Add ``--input-method`` option to specify audio recording command, added ``sox`` input.
+- 2022/04/18: Add ``--input`` option to specify audio recording command, added ``sox`` input.
 - 2022/01/21: Add ``--config`` option to specify a custom configuration file location.
 - 2022/01/21: Correct error reporting an error when evaluating the user configuration fails.
 - 2022/01/10: Improve error message when ``xdotool`` is not found.
