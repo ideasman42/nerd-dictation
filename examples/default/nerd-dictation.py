@@ -38,6 +38,19 @@ WORD_REPLACE_REGEX = tuple(
     for (match, replacement) in WORD_REPLACE_REGEX
 )
 
+# -----------------------------------------------------------------------------
+# Add Punctuation
+
+CLOSING_PUNCTUATION = {
+    "period": ".",
+    "comma": ",",
+    "question mark": "?",
+    "close quote": '"',
+}
+
+OPENING_PUNCTUATION = {
+    "open quote": '"',
+}
 
 # -----------------------------------------------------------------------------
 # Main Processing Function
@@ -47,6 +60,12 @@ def nerd_dictation_process(text):
     for match, replacement in TEXT_REPLACE_REGEX:
         text = match.sub(replacement, text)
 
+    for match, replacement in CLOSING_PUNCTUATION.items():
+        text = text.replace(" " + match, replacement)
+
+    for match, replacement in OPENING_PUNCTUATION.items():
+        text = text.replace(match + " ", replacement)
+
     words = text.split(" ")
 
     for i, w in enumerate(words):
@@ -54,7 +73,6 @@ def nerd_dictation_process(text):
         w_test = WORD_REPLACE.get(w)
         if w_test is not None:
             w = w_test
-
         if w_init == w:
             for match, replacement in WORD_REPLACE_REGEX:
                 w_test = match.sub(replacement, w)
