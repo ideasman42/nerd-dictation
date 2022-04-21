@@ -1061,6 +1061,7 @@ def main_begin(
             if delete_prev_chars:
                 sys.stdout.write("\x08" * delete_prev_chars)
             sys.stdout.write(text)
+            sys.stdout.flush()
 
     else:
         # Unreachable.
@@ -1349,7 +1350,7 @@ This creates the directory used to store internal data, so other commands such a
             pulse_device_name=args.pulse_device_name,
             sample_rate=args.sample_rate,
             input_method=args.input_method,
-            progressive=not (args.defer_output or args.output == "STDOUT"),
+            progressive=not (args.defer_output or (args.output == "STDOUT" and not args.progressive_continuous)),
             progressive_continuous=args.progressive_continuous,
             full_sentence=args.full_sentence,
             numbers_as_digits=args.numbers_as_digits,
