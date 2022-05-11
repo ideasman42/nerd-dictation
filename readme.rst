@@ -70,7 +70,11 @@ Dependencies
 - Python 3.
 - The VOSK-API.
 - ``parec`` command for recording from pulse-audio (default) or ``sox`` command as alternative.
-- ``xdotool`` command to simulate keyboard input.
+- ``xdotool`` (default) or ``ydotool`` command to simulate keyboard input.
+
+``xdotool`` only works with the X display server while ``ydotool`` supports Wayland,
+but it needs some configuration to work.
+To use ``ydotool``, check out our setup guide: `Using ydotool with nerd-dictation <readme-ydotool.rst>`_.
 
 
 Install
@@ -171,14 +175,16 @@ Subcommand: ``begin``
 usage::
 
        nerd-dictation begin [-h] [--cookie FILE_PATH] [--config FILE]
-                            [--vosk-model-dir DIR] [--input INPUT_METHOD]
+                            [--vosk-model-dir DIR]
                             [--pulse-device-name IDENTIFIER]
                             [--sample-rate HZ] [--defer-output] [--continuous]
                             [--timeout SECONDS] [--idle-time SECONDS]
                             [--delay-exit SECONDS]
                             [--punctuate-from-previous-timeout SECONDS]
                             [--full-sentence] [--numbers-as-digits]
-                            [--numbers-use-separator] [--output OUTPUT_METHOD]
+                            [--numbers-use-separator] [--input INPUT_METHOD]
+                            [--output OUTPUT_METHOD]
+                            [--simulate-input-tool SIMULATE_INPUT_TOOL]
                             [- ...]
 
 This creates the directory used to store internal data, so other commands such as sync can be performed.
@@ -187,20 +193,9 @@ This creates the directory used to store internal data, so other commands such a
 options:
   -h, --help            show this help message and exit
   --cookie FILE_PATH    Location for writing a temporary cookie (this file is monitored to begin/end dictation).
-  --config FILE         Override the file used for the user configuration
-                        Use an empty string to disable a custom configuration.
+  --config FILE         Override the file used for the user configuration.
+                        Use an empty string to prevent the users configuration being read.
   --vosk-model-dir DIR  Path to the VOSK model, see: https://alphacephei.com/vosk/models
-  --input INPUT_METHOD  Specify input method to be used for audio recording. Valid methods: PAREC, SOX
-                          PAREC (external command, default)
-                              See --pulse-device-name option to use a specific pulse-audio device.
-                          SOX (external command)
-                              Set environment variable AUDIODEV to use a specific input device.
-                              Other sox options can be set (such as gain) by setting environment variable SOX_OPTS.
-                              You can test various devices by:
-                                arecord -l || cat /proc/asound/cards  || cat /dev/sndstat     # List audio devices.
-                                # Example, use card 2, subdevice 0.  Record 10 seconds and playback to default output,
-                                AUDIODEV='hw:2,0'  sox -d --buffer 1000 -r 16000 -b 16 -e signed-integer -c 1  -t wav -L  test.wav trim 0 10
-                                sox test.wav -d
   --pulse-device-name IDENTIFIER
                         The name of the pulse-audio device to use for recording.
                         See the output of "pactl list sources" to find device names (using the identifier following "Name:").
@@ -229,6 +224,17 @@ options:
   --numbers-as-digits   Convert numbers into digits instead of using whole words.
   --numbers-use-separator
                         Use a comma separators for numbers.
+  --input INPUT_METHOD  Specify input method to be used for audio recording. Valid methods: PAREC, SOX
+                          PAREC (external command, default)
+                              See --pulse-device-name option to use a specific pulse-audio device.
+                          SOX (external command)
+                              Set environment variable AUDIODEV to use a specific input device.
+                              Other sox options can be set (such as gain) by setting environment variable SOX_OPTS.
+                              You can test various devices by:
+                                arecord -l || cat /proc/asound/cards  || cat /dev/sndstat     # List audio devices.
+                                # Example, use card 2, subdevice 0.  Record 10 seconds and playback to default output,
+                                AUDIODEV='hw:2,0'  sox -d --buffer 1000 -r 16000 -b 16 -e signed-integer -c 1  -t wav -L  test.wav trim 0 10
+                                sox test.wav -d
   --output OUTPUT_METHOD
                         Method used to at put the result of speech to text.
 
@@ -236,6 +242,12 @@ options:
                         - ``STDOUT`` print the result to the standard output.
                           Be sure only to handle text from the standard output
                           as the standard error may be used for reporting any problems that occur.
+  --simulate-input-tool SIMULATE_INPUT_TOOL
+                        Program used to simulate keystrokes (default).
+
+                        - ``XDOTOOL`` Compatible with the X server only (default).
+                        - ``YDOTOOL`` Compatible with all Linux distributions and Wayland but requires some setup.
+                          For help on setting up ydotool, see our guide readme-ydotool.rst in the nerd-dictation repository.
   ``-`` ...             End argument parsing.
                         This can be used for user defined arguments which configuration scripts may read from the ``sys.argv``.
 
@@ -324,7 +336,6 @@ Further Work
 ============
 
 - Support a general solution to capitalize words (proper nouns for example).
-- Wayland support (this should be quite simple to support and mainly relies on a replacement for ``xdotool``).
 - Add a ``setup.py`` for easy installation on uses systems.
 - Possibly other speech to text engines *(only if they provide some significant benefits)*.
 - Possibly support Windows & macOS.

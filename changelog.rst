@@ -3,6 +3,7 @@
 Changelog
 #########
 
+- 2022/05/16: Add ``ydotool`` support with ``--simpulate-input-tool=YDOTOOL``.
 - 2022/04/18: Add ``--input`` option to specify audio recording command, added ``sox`` input.
 - 2022/01/21: Add ``--config`` option to specify a custom configuration file location.
 - 2022/01/21: Correct error reporting an error when evaluating the user configuration fails.
