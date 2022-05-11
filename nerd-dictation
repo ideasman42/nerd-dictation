@@ -60,21 +60,40 @@ USER_CONFIG = "nerd-dictation.py"
 #
 
 
-def run_xdotool(subcommand: str, payload: List[str]) -> None:
-    cmd_base = "xdotool"
-    cmd = [
-        cmd_base,
-        subcommand,
-        "--clearmodifiers",
-    ] + payload
+def simulate_backspace_presses(count: int, simulate_input_tool: str) -> None:
+    cmd = [simulate_input_tool]
+    if simulate_input_tool == "xdotool":
+        cmd += ["key", "--"] + ["BackSpace"] * count
+    elif simulate_input_tool == "ydotool":
+        # ydotool's key subcommand works with int key IDs and key states. 14 is
+        # the linux keycode for the backspace key, and :1 and :0 respectively
+        # stand for "pressed" and "released."
+        #
+        # The key delay is lower than the typing setting because it applies to
+        # each key state change (pressed, released).
+        cmd += ["key", "--key-delay", "3", "--",] + ["14:1", "14:0"] * count
+    run_command_safely(cmd)
+
+
+def simulate_typing(text: str, simulate_input_tool: str) -> None:
+    cmd = [simulate_input_tool]
+    if simulate_input_tool == "xdotool":
+        cmd += ["type", "--clearmodifiers", "--", text]
+    elif simulate_input_tool == "ydotool":
+        # The low delay value makes typing fast, making the output much snappier
+        # than the slow default.
+        cmd += ["type", "--next-delay", "5", "--", text]
+    run_command_safely(cmd)
+
+
+def run_command_safely(cmd: List[str]) -> None:
     try:
         subprocess.check_output(cmd)
-    except FileNotFoundError as ex:
-        print("Command {!r} not found: {!s}".format(cmd_base, ex))
-        sys.exit(1)
-
     # Don't catch other kinds of exceptions as they should never happen
     # and can be considered a severe error which doesn't need to be made "user friendly".
+    except FileNotFoundError as ex:
+        print("Command {!r} not found: {!s}".format(cmd[0], ex))
+        sys.exit(1)
 
 
 def touch(filepath: str, mtime: Optional[float] = None) -> None:
@@ -937,6 +956,7 @@ def main_begin(
     punctuate_from_previous_timeout: float = 0.0,
     config_override: Optional[str],
     output: str = "TYPE",
+    simulate_input_tool: str = "xdotool",
 ) -> None:
     """
     Initialize audio recording, then full text to speech conversion can take place.
@@ -1052,8 +1072,10 @@ def main_begin(
 
         def handle_fn(text: str, delete_prev_chars: int) -> None:
             if delete_prev_chars:
-                run_xdotool("key", ["BackSpace"] * delete_prev_chars)
-            run_xdotool("type", ["--", text])
+                # Backspace keycode. In ydotool we need to mark the key pressed with :1, then release it with :0
+                # The default delay between keypresses is long and key delay stands for one key state change, so 3 ms == 6 ms to press and release backspace once.
+                simulate_backspace_presses(delete_prev_chars, simulate_input_tool)
+            simulate_typing(text, simulate_input_tool)
 
     elif output == "STDOUT":
 
@@ -1330,7 +1352,21 @@ This creates the directory used to store internal data, so other commands such a
         ),
         required=False,
     )
-
+    subparse.add_argument(
+        "--simulate-input-tool",
+        dest="simulate_input_tool",
+        default="xdotool",
+        choices=("xdotool", "ydotool"),
+        metavar="SIMULATE_INPUT_TOOL",
+        help=(
+            "Program used to simulate keystrokes (default).\n"
+            "\n"
+            "- ``xdotool`` Compatible with the X server only (default).\n"
+            "- ``ydotool`` Compatible with all Linux distributions and Wayland but requires some setup.\n"
+            "  For help on setting up ydotool, see our guide using-ydotool.rst in the nerd-dictation repository.\n"
+        ),
+        required=False,
+    )
     subparse.add_argument(
         "-",
         dest="rest",
@@ -1360,6 +1396,7 @@ This creates the directory used to store internal data, so other commands such a
             punctuate_from_previous_timeout=args.punctuate_from_previous_timeout,
             config_override=args.config,
             output=args.output,
+            simulate_input_tool=args.simulate_input_tool,
         ),
     )
 

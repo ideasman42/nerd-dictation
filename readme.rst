@@ -70,7 +70,9 @@ Dependencies
 - Python 3.
 - The VOSK-API.
 - ``parec`` command for recording from pulse-audio (default) or ``sox`` command as alternative.
-- ``xdotool`` command to simulate keyboard input.
+- ``xdotool`` (default) or ``ydotool`` command to simulate keyboard input.
+
+``xdotool`` only works with the X display server while ``ydotool`` supports Wayland, but it needs some configuration to work. To use ``ydotool``, check out our setup guide: `Using ydotool with nerd-dictation <using-ydotool.rst>`_.
 
 
 Install
@@ -324,7 +326,6 @@ Further Work
 ============
 
 - Support a general solution to capitalize words (proper nouns for example).
-- Wayland support (this should be quite simple to support and mainly relies on a replacement for ``xdotool``).
 - Add a ``setup.py`` for easy installation on uses systems.
 - Possibly other speech to text engines *(only if they provide some significant benefits)*.
 - Possibly support Windows & macOS.
