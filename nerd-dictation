@@ -615,8 +615,7 @@ class from_words_to_digits:
                 )
                 if i != i_next:
                     word_list[i:i_next] = [
-                        ("{:,d}".format(int(number)) if (numbers_use_separator and allow_reformat) else number)
-                        + suffix
+                        ("{:,d}".format(int(number)) if (numbers_use_separator and allow_reformat) else number) + suffix
                     ]
 
                     if (i_number_prev != -1) and (i_number_prev + 1 != i):
@@ -746,8 +745,7 @@ def text_from_vosk_pipe(
 
     if not os.path.exists(vosk_model_dir):
         sys.stderr.write(
-            "Please download the model from https://alphacephei.com/vosk/models and unpack it to %r.\n"
-            % vosk_model_dir
+            "Please download the model from https://alphacephei.com/vosk/models and unpack it to %r.\n" % vosk_model_dir
         )
         sys.exit(1)
 
@@ -1166,8 +1164,8 @@ This creates the directory used to store internal data, so other commands such a
         type=str,
         metavar="FILE",
         help=(
-            "Override the file used for the user configuration\n"
-            "Use an empty string to disable a custom configuration."
+            "Override the file used for the user configuration.\n"
+            "Use an empty string to prevent the users configuration being read."
         ),
         required=False,
     )
