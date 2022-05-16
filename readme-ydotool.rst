@@ -1,21 +1,21 @@
-#################################
-Using ydotool with nerd-dictation
-#################################
+#####################################
+Using ``ydotool`` with nerd-dictation
+#####################################
 
 This guide explains how to get and configure ``ydotool`` to simulate typing with ``nerd-dictation``,
 which brings support for typing on Wayland and languages other than English.
 
-When should I use ydotool
-=========================
+When should I use ``ydotool``?
+==============================
 
 By default, ``nerd-dictation`` uses the ``xdotool`` program to simulate writing with the keyboard.
 
 This program has two major limitations:
 
-# It is only compatible with Xorg, not with Wayland.
-  If you want to use Wayland, the program will not type anything.
-# It suffers from considerable slowdowns when writing characters not found in the English language,
-  temporarily freezing your computer's display.
+#. It is only compatible with Xorg, not with Wayland.
+   If you want to use Wayland, the program will not type anything.
+#. It suffers from considerable slowdowns when writing characters not found in the English language,
+   temporarily freezing your computer's display.
 
 There is a program named ``ydotool`` that you can use as an alternative to ``xdotool``.
 ``ydotool`` does not rely on the X server, so it is compatible with Wayland.
@@ -25,8 +25,8 @@ It also offers better performance in languages other than English.
 The flip side is that it requires some system configuration to use conveniently.
 Also, it lacks accessible documentation, which is why it is not the default.
 
-Installing ydotool
-==================
+Installing ``ydotool``
+======================
 
 You will need to download the latest version of the program found on its git repository:
 https://github.com/ReimuNotMoe/ydotool/releases/
@@ -37,8 +37,8 @@ You should then place them in a place that's available on your ``$PATH`` environ
 **Warning:** While ``ydotool`` is available on the ``apt`` package manager on Ubuntu 22.04 LTS,
 the Debian package is outdated.
 
-Configuring ydotool
-===================
+Configuring ``ydotool``
+=======================
 
 To simulate typing, the program needs access to your ``/dev/uinput`` device.
 By default, this requires root privileges every time you run ``ydotool``,
@@ -82,8 +82,8 @@ for performance reasons. You needs to run ``ydotoold`` before you start using ``
 To avoid running it every time you start the computer, you can add it to your startup programs.
 The steps depend on your distribution, so we'll let you look this up.
 
-Running nerd dictation with ydotool
-===================================
+Running nerd dictation with ``ydotool``
+=======================================
 
 To run ``nerd-dictation`` with ``ydotool``, use the ``--simulate-input-tool`` argument.
 

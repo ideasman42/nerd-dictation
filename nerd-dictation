@@ -1313,19 +1313,7 @@ This creates the directory used to store internal data, so other commands such a
             "- ``PAREC`` (external command, default)\n"
             "  See --pulse-device-name option to use a specific pulse-audio device.\n"
             "- ``SOX`` (external command)\n"
-            "  Set environment variable AUDIODEV to use a specific input device.\n"
-            "  Other sox options can be set (such as gain) by setting environment variable SOX_OPTS.\n"
-            "  You can test various devices by::\n"
-            "\n"
-            "     # List audio devices.\n"
-            "     arecord -l || cat /proc/asound/cards || cat /dev/sndstat \n"
-            "\n"
-            "     # Example, use card 2, subdevice 0.\n"
-            "     # Record 10 seconds and playback to default output.\n"
-            "     AUDIODEV='hw:2,0' \\\n"
-            "         sox -d --buffer 1000 -r 16000 -b 16 -e signed-integer \\\n"
-            "         -c 1 -t wav -L test.wav trim 0 10\n"
-            "     sox test.wav -d\n"
+            "  For help on setting up ydotool, see ``readme-sox.rst`` in the nerd-dictation repository.\n"
         ),
         required=False,
     )
@@ -1357,7 +1345,7 @@ This creates the directory used to store internal data, so other commands such a
             "\n"
             "- ``XDOTOOL`` Compatible with the X server only (default).\n"
             "- ``YDOTOOL`` Compatible with all Linux distributions and Wayland but requires some setup.\n"
-            "  For help on setting up ydotool, see our guide readme-ydotool.rst in the nerd-dictation repository.\n"
+            "  For help on setting up ydotool, see ``readme-ydotool.rst`` in the nerd-dictation repository.\n"
         ),
         required=False,
     )
