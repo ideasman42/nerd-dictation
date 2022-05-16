@@ -70,11 +70,9 @@ Dependencies
 - Python 3.
 - The VOSK-API.
 - ``parec`` command for recording from pulse-audio (default) or ``sox`` command as alternative.
-- ``xdotool`` (default) or ``ydotool`` command to simulate keyboard input.
-
-``xdotool`` only works with the X display server while ``ydotool`` supports Wayland,
-but it needs some configuration to work.
-To use ``ydotool``, check out our setup guide: `Using ydotool with nerd-dictation <readme-ydotool.rst>`_.
+- ``xdotool`` (default, X11 only) or
+  ``ydotool`` command to simulate keyboard input (supports X11 & Wayland).
+  See the ``ydotool`` setup guide: `Using ydotool with nerd-dictation <readme-ydotool.rst>`_.
 
 
 Install
@@ -225,16 +223,23 @@ options:
   --numbers-use-separator
                         Use a comma separators for numbers.
   --input INPUT_METHOD  Specify input method to be used for audio recording. Valid methods: PAREC, SOX
-                          PAREC (external command, default)
-                              See --pulse-device-name option to use a specific pulse-audio device.
-                          SOX (external command)
-                              Set environment variable AUDIODEV to use a specific input device.
-                              Other sox options can be set (such as gain) by setting environment variable SOX_OPTS.
-                              You can test various devices by:
-                                arecord -l || cat /proc/asound/cards  || cat /dev/sndstat     # List audio devices.
-                                # Example, use card 2, subdevice 0.  Record 10 seconds and playback to default output,
-                                AUDIODEV='hw:2,0'  sox -d --buffer 1000 -r 16000 -b 16 -e signed-integer -c 1  -t wav -L  test.wav trim 0 10
-                                sox test.wav -d
+
+                        - ``PAREC`` (external command, default)
+                          See --pulse-device-name option to use a specific pulse-audio device.
+                        - ``SOX`` (external command)
+                          Set environment variable AUDIODEV to use a specific input device.
+                          Other sox options can be set (such as gain) by setting environment variable SOX_OPTS.
+                          You can test various devices by::
+
+                             # List audio devices.
+                             arecord -l || cat /proc/asound/cards || cat /dev/sndstat
+
+                             # Example, use card 2, subdevice 0.
+                             # Record 10 seconds and playback to default output.
+                             AUDIODEV='hw:2,0' \
+                                 sox -d --buffer 1000 -r 16000 -b 16 -e signed-integer \
+                                 -c 1 -t wav -L test.wav trim 0 10
+                             sox test.wav -d
   --output OUTPUT_METHOD
                         Method used to at put the result of speech to text.
 
