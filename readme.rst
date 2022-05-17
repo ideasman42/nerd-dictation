@@ -5,7 +5,7 @@ Nerd Dictation
 *Offline Speech to Text for Desktop Linux.* - See `demo video <https://www.youtube.com/watch?v=T7sR-4DFhpQ>`__.
 
 This is a utility that provides simple access speech to text for using in Linux
-without being tied to a desktop environment.
+without being tied to a desktop environment, using the excellent `VOSK-API <https://github.com/alphacep/vosk-api>`__.
 
 Simple
    This is a single file Python script with minimal dependencies.
@@ -15,8 +15,6 @@ Zero Overhead
    As this relies on manual activation there are no background processes.
 
 Dictation is accessed manually with begin/end commands.
-
-This uses the excellent `vosk-api <https://github.com/alphacep/vosk-api>`__.
 
 
 Usage
