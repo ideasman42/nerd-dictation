@@ -5,6 +5,7 @@ Using ``ydotool`` with nerd-dictation
 This guide explains how to get and configure ``ydotool`` to simulate typing with ``nerd-dictation``,
 which brings support for typing on Wayland and languages other than English.
 
+
 When should I use ``ydotool``?
 ==============================
 
@@ -25,6 +26,7 @@ It also offers better performance in languages other than English.
 The flip side is that it requires some system configuration to use conveniently.
 Also, it lacks accessible documentation, which is why it is not the default.
 
+
 Installing ``ydotool``
 ======================
 
@@ -36,6 +38,7 @@ You should then place them in a place that's available on your ``$PATH`` environ
 
 **Warning:** While ``ydotool`` is available on the ``apt`` package manager on Ubuntu 22.04 LTS,
 the Debian package is outdated.
+
 
 Configuring ``ydotool``
 =======================
@@ -51,18 +54,11 @@ To do that, we use a udev rule.
 Udev is the Linux system that detects and reacts to devices getting plugged or unplugged on your computer.
 It also works with virtual devices like ``ydotool``.
 
-To add a user to a group, you can use the ``usermod`` command, like so:
+To add the current ``$USER`` to a group, you can use the ``usermod`` command:
 
 .. code-block:: sh
 
-   # Append YOUR_USERNAME to the group named "input"
-   sudo usermod -aG input YOUR_USERNAME
-
-To get your username, you can use the variable $USER or $USERNAME.
-
-.. code-block:: sh
-
-   sudo usermod -aG input $USERNAME
+   sudo usermod -aG input $USER
 
 You then need to define a new udev rule that will give the ``input`` group permanent write access to the uinput device
 (this will give ``ydotool`` write access too).
@@ -81,6 +77,7 @@ for performance reasons. You needs to run ``ydotoold`` before you start using ``
 
 To avoid running it every time you start the computer, you can add it to your startup programs.
 The steps depend on your distribution, so we'll let you look this up.
+
 
 Running nerd dictation with ``ydotool``
 =======================================

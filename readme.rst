@@ -215,7 +215,8 @@ options:
                         this can be useful so "push to talk" setups can be released while you finish speaking
                         (zero disables).
   --punctuate-from-previous-timeout SECONDS
-                        The time-out in seconds for detecting the state of dictation from the previous recording, this can be useful so punctuation it is added before entering the dictation(zero disables).
+                        The time-out in seconds for detecting the state of dictation from the previous recording,
+                        this can be useful so punctuation it is added before entering the dictation(zero disables).
   --full-sentence       Capitalize the first character.
                         This is also used to add either a comma or a full stop when dictation is performed under the
                         ``--punctuate-from-previous-timeout`` value.
@@ -279,8 +280,7 @@ Details
 =======
 
 - Typing in results will **never** press enter/return.
-- Pulse audio is used for recording.
-- Recording and speech to text a performed in parallel.
+- Recording and speech to text is performed in parallel.
 
 
 Examples

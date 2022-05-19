@@ -1262,7 +1262,7 @@ This creates the directory used to store internal data, so other commands such a
         type=float,
         metavar="SECONDS",
         help=(
-            "The time-out in seconds for detecting the state of dictation from the previous recording, "
+            "The time-out in seconds for detecting the state of dictation from the previous recording,\n"
             "this can be useful so punctuation it is added before entering the dictation"
             "(zero disables)."
         ),
