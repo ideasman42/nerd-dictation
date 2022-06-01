@@ -110,6 +110,9 @@ To test dictation:
    They are available `here <https://alphacephei.com/vosk/models>`__.
 
 
+If you prefer to use a package, see: `Packaging <package/readme.rst>`_.
+
+
 Configuration
 =============
 

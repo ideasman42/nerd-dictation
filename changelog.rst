@@ -3,6 +3,7 @@
 Changelog
 #########
 
+- 2022/06/05: Add packaging script for PIP/setup-tools to optionally install via PIP.
 - 2022/05/16: Add ``ydotool`` support with ``--simpulate-input-tool=YDOTOOL``.
 - 2022/04/18: Add ``--input`` option to specify audio recording command, added ``sox`` input.
 - 2022/01/21: Add ``--config`` option to specify a custom configuration file location.
