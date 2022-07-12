@@ -332,6 +332,5 @@ Further Work
 ============
 
 - Support a general solution to capitalize words (proper nouns for example).
-- Add a ``setup.py`` for easy installation on uses systems.
 - Possibly other speech to text engines *(only if they provide some significant benefits)*.
 - Possibly support Windows & macOS.
