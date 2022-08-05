@@ -14,7 +14,6 @@ python3.pkgs.buildPythonApplication rec {
   VOSK_MODEL_PATH = "${enModel}";
 
   propagatedBuildInputs = with python3.pkgs; [
-    xdotool
     py-vosk
     requests
     tqdm
@@ -26,6 +25,7 @@ python3.pkgs.buildPythonApplication rec {
 
   # Not entirely sure why I had to do this manually...
   makeWrapperArgs = [
+    "--prefix PATH ':' ${xdotool}/bin"
     "--prefix PYTHONPATH ':' ${python3}/${python3.sitePackages}/"
     "--prefix LD_LIBRARY_PATH ':' ${lib.makeLibraryPath [stdenv.cc.cc.lib]}"
   ];

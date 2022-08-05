@@ -2,7 +2,7 @@
 , big-model ? false
 }:
 let
-  pkgs = import srcs.nixpkgs {};
+  pkgs = import srcs.nixpkgs { };
 
   enModelSmall = pkgs.fetchzip {
     url = "https://alphacephei.com/kaldi/models/vosk-model-small-en-us-0.15.zip";
@@ -13,14 +13,15 @@ let
     sha256 = "1dl9sf36mn8l3bcxni4qwrv52hwsfmcm9j08km7iz2vhaiz5wn0r";
   };
 
-  enModel = if big-model
+  enModel =
+    if big-model
     then enModelLGraph
     else enModelSmall;
 
   py-vosk = pkgs.python3Packages.buildPythonPackage rec {
     pname = "vosk";
     version = "0.3.43";
-    VOSK_MODEL_PATH="${enModelSmall}";
+    VOSK_MODEL_PATH = "${enModelSmall}";
     format = "wheel";
     # This package name is weird and can't be found using the simple route.
     # vosk-0.3.43-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.whl
@@ -42,12 +43,14 @@ let
       pkgs.stdenv.cc.cc.lib
     ];
   };
+
+  nerd-drv = pkgs.callPackage ./. {
+    inherit enModel py-vosk;
+    python3 = pkgs.python3.withPackages (_: [ py-vosk ]);
+  };
 in
-with pkgs; mkShell {
-  packages = [
-    (python3.withPackages (_: [ py-vosk ]))
-    xdotool
-  ];
+pkgs.mkShell {
+  packages = [ nerd-drv ];
   shellHook = ''
     export VOSK_MODEL_EN=${enModel}
   '';
