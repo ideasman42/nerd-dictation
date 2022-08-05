@@ -9,7 +9,7 @@ python3.pkgs.buildPythonApplication rec {
   pname = "nerd-dictation";
   version = "20220605";
   format = "other";
-  src = ./.;
+  src = ./../../.;
 
   VOSK_MODEL_PATH = "${enModel}";
 
