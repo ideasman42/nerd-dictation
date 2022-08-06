@@ -52,6 +52,7 @@ in
 pkgs.mkShell {
   packages = [ nerd-drv ];
   shellHook = ''
+    # Adds a environment variable to the nix-shell for us on the command line when telling nerd-dictation where the model is located.
     export VOSK_MODEL_EN=${enModel}
   '';
 }
