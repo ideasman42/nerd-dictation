@@ -72,7 +72,8 @@ Dependencies
   See the guide: `Using sox with nerd-dictation <readme-sox.rst>`_.
 - ``xdotool`` (default, X11 only) or
   ``ydotool`` command to simulate keyboard input (supports X11 & Wayland).
-  See the setup guide: `Using ydotool with nerd-dictation <readme-ydotool.rst>`_.
+  See the setup guide: `Using ydotool with nerd-dictation <readme-ydotool.rst>`_
+  or ``wtype`` an "xdotool for wayland"
 
 
 Install
@@ -244,6 +245,7 @@ options:
 
                         - ``XDOTOOL`` Compatible with the X server only (default).
                         - ``YDOTOOL`` Compatible with all Linux distributions and Wayland but requires some setup.
+                        - ``WTYPE`` Compatible with Wayland.
                           For help on setting up ydotool, see ``readme-ydotool.rst`` in the nerd-dictation repository.
   ``-`` ...             End argument parsing.
                         This can be used for user defined arguments which configuration scripts may read from the ``sys.argv``.
