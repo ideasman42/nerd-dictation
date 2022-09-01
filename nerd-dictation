@@ -70,6 +70,8 @@ def simulate_backspace_presses(count: int, simulate_input_tool: str) -> None:
             "3",
             "--",
         ] + ["14:1", "14:0"] * count
+    elif simulate_input_tool == "WTYPE":
+        cmd += ["-k", "backSpace"] * count
     run_command_or_exit_on_failure(cmd)
 
 
@@ -81,6 +83,8 @@ def simulate_typing(text: str, simulate_input_tool: str) -> None:
         # The low delay value makes typing fast, making the output much snappier
         # than the slow default.
         cmd += ["type", "--next-delay", "5", "--", text]
+    elif simulate_input_tool == "WTYPE":
+        cmd += [text]
     run_command_or_exit_on_failure(cmd)
 
 
@@ -1338,13 +1342,14 @@ This creates the directory used to store internal data, so other commands such a
         "--simulate-input-tool",
         dest="simulate_input_tool",
         default="XDOTOOL",
-        choices=("XDOTOOL", "YDOTOOL"),
+        choices=("XDOTOOL", "YDOTOOL", "WTYPE"),
         metavar="SIMULATE_INPUT_TOOL",
         help=(
             "Program used to simulate keystrokes (default).\n"
             "\n"
             "- ``XDOTOOL`` Compatible with the X server only (default).\n"
             "- ``YDOTOOL`` Compatible with all Linux distributions and Wayland but requires some setup.\n"
+            "- ``WTYPE`` Compatible with Wayland.\n"
             "  For help on setting up ydotool, see ``readme-ydotool.rst`` in the nerd-dictation repository.\n"
         ),
         required=False,
