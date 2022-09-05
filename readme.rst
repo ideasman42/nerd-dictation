@@ -191,7 +191,6 @@ usage::
 
 This creates the directory used to store internal data, so other commands such as sync can be performed.
 
-
 options:
   -h, --help            show this help message and exit
   --cookie FILE_PATH    Location for writing a temporary cookie (this file is monitored to begin/end dictation).
@@ -272,7 +271,6 @@ usage::
        nerd-dictation cancel [-h] [--cookie FILE_PATH]
 
 This cancels dictation.
-
 
 options:
   -h, --help          show this help message and exit

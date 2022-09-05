@@ -1136,9 +1136,10 @@ def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
     subparse = subparsers.add_parser(
         "begin",
         help="Begin dictation.",
-        description="""\
-This creates the directory used to store internal data, so other commands such as sync can be performed.
-    """,
+        description=(
+            "This creates the directory used to store internal data, "
+            "so other commands such as sync can be performed."
+        ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
@@ -1411,9 +1412,9 @@ def argparse_create_cancel(subparsers: argparse._SubParsersAction) -> None:
     subparse = subparsers.add_parser(
         "cancel",
         help="Cancel dictation.",
-        description="""\
-This cancels dictation.
-    """,
+        description=(
+            "This cancels dictation."
+        ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
 

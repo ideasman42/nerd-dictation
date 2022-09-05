@@ -55,9 +55,7 @@ def main(base_dir):
             "License :: OSI Approved :: GPL v3.0",
         ],
         scripts=[NERD_DICTATION_DST],
-        data_files=[
-            ("nerd-dictation", [NERD_DICTATION_DST, README_DST])
-        ],
+        data_files=[("nerd-dictation", [NERD_DICTATION_DST, README_DST])],
         packages=[""],
         package_data={"": [NERD_DICTATION_DST, README_DST]},
         include_package_data=True,
