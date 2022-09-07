@@ -71,7 +71,8 @@ def simulate_backspace_presses(count: int, simulate_input_tool: str) -> None:
             "--",
         ] + ["14:1", "14:0"] * count
     elif simulate_input_tool == "WTYPE":
-        cmd += ["-k", "backSpace"] * count
+        # Without the delay (5ms) the backspace does not work correctly every time
+        cmd += ["-s", "5"] + ["-k", "backSpace"] * count
     run_command_or_exit_on_failure(cmd)
 
 
