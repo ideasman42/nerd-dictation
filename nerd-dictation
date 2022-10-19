@@ -846,6 +846,7 @@ def text_from_vosk_pipe(
 
     # Use code to delay exiting, allowing reading the recording buffer to catch-up.
     code = 0
+    retype_ok = False
 
     if idle_time > 0.0:
         idle_time_prev = time.time()
@@ -875,13 +876,23 @@ def text_from_vosk_pipe(
 
             if ok:
                 json_text = rec.Result()
+            elif not retype_ok:
+                json_text = rec.PartialResult()
+                json_data = json.loads(json_text)
+                text = json_data["partial"]
+                if text:
+                    json_text = rec.FinalResult()
+                    rec.Reset()
+                    ok = True
+
+            if ok:
                 json_text_partial_prev = ""
                 json_data = json.loads(json_text)
                 text = json_data["text"]
                 assert isinstance(text, str)
                 if text:
                     handle_fn_wrapper(text, False)
-            else:
+            elif retype_ok:
                 # Only for comparison, to detect change.
                 # if use_timeout:
                 json_text = rec.PartialResult()
