@@ -67,14 +67,29 @@ Dependencies
 
 - Python 3.
 - The VOSK-API.
-- ``parec`` command for recording from pulse-audio (default) or
-  ``sox`` command as alternative.
-  See the guide: `Using sox with nerd-dictation <readme-sox.rst>`_.
-- `xdotool <https://github.com/jordansissel/xdotool>`_ command to simulate input in X11 (default) or
-  `dotool <https://git.sr.ht/~geb/dotool>`_ command to simulate input anywhere (X11/Wayland/TTYs) or
-  `ydotool <https://github.com/ReimuNotMoe/ydotool>`_ similar to dotool but requires setup and a daemon to be running
-  (see the setup guide: `Using ydotool with nerd-dictation <readme-ydotool.rst>`_)
-  or `wtype <https://github.com/atx/wtype>`_ an "xdotool for wayland"
+- An audio recording utility (``parec`` by default).
+- An input simulation utility (``xdotool`` by default).
+
+
+Audio Recording Utilities
+-------------------------
+
+You may select one of the following tools.
+
+- ``parec`` command for recording from pulse-audio.
+- ``sox`` command as alternative, see the guide: `Using sox with nerd-dictation <readme-sox.rst>`_.
+
+
+Input Simulation Utilities
+--------------------------
+
+You may select one of the following input simulation utilities.
+
+- `xdotool <https://github.com/jordansissel/xdotool>`__ command to simulate input in X11.
+- `ydotool <https://github.com/ReimuNotMoe/ydotool>`__ command to simulate input anywhere (X11/Wayland/TTYs).
+  See the setup guide: `Using ydotool with nerd-dictation <readme-ydotool.rst>`_.
+- `dotool <https://git.sr.ht/~geb/dotool>`__ command to simulate input anywhere (X11/Wayland/TTYs).
+- `wtype <https://github.com/atx/wtype>`__ to simulate input in Wayland".
 
 
 Install
