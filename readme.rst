@@ -70,11 +70,11 @@ Dependencies
 - ``parec`` command for recording from pulse-audio (default) or
   ``sox`` command as alternative.
   See the guide: `Using sox with nerd-dictation <readme-sox.rst>`_.
-- ``xdotool`` command to simulate input in X11 (default) or
-  ``dotool`` command to simulate input anywhere (X11/Wayland/TTYs) or
-  ``ydotool`` similar to dotool but requires setup and a daemon to be running.
-  See the setup guide: `Using ydotool with nerd-dictation <readme-ydotool.rst>`_
-  or ``wtype`` an "xdotool for wayland"
+- `xdotool <https://github.com/jordansissel/xdotool>`_ command to simulate input in X11 (default) or
+  `dotool <https://git.sr.ht/~geb/dotool>`_ command to simulate input anywhere (X11/Wayland/TTYs) or
+  `ydotool <https://github.com/ReimuNotMoe/ydotool>`_ similar to dotool but requires setup and a daemon to be running
+  (see the setup guide: `Using ydotool with nerd-dictation <readme-ydotool.rst>`_)
+  or `wtype <https://github.com/atx/wtype>`_ an "xdotool for wayland"
 
 
 Install
