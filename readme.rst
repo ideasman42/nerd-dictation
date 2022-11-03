@@ -70,8 +70,9 @@ Dependencies
 - ``parec`` command for recording from pulse-audio (default) or
   ``sox`` command as alternative.
   See the guide: `Using sox with nerd-dictation <readme-sox.rst>`_.
-- ``xdotool`` (default, X11 only) or
-  ``ydotool`` command to simulate keyboard input (supports X11 & Wayland).
+- ``xdotool`` command to simulate input in X11 (default) or
+  ``dotool`` command to simulate input anywhere (X11/Wayland/TTYs) or
+  ``ydotool`` similar to dotool but requires setup and a daemon to be running.
   See the setup guide: `Using ydotool with nerd-dictation <readme-ydotool.rst>`_
   or ``wtype`` an "xdotool for wayland"
 
@@ -243,6 +244,7 @@ options:
                         Program used to simulate keystrokes (default).
 
                         - ``XDOTOOL`` Compatible with the X server only (default).
+                        - ``DOTOOL`` Compatible with all Linux distributions and Wayland.
                         - ``YDOTOOL`` Compatible with all Linux distributions and Wayland but requires some setup.
                         - ``WTYPE`` Compatible with Wayland.
                           For help on setting up ydotool, see ``readme-ydotool.rst`` in the nerd-dictation repository.
