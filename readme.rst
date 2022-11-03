@@ -312,6 +312,7 @@ Other Software
 ==============
 
 - `Elograf <https://github.com/papoteur-mga/elograf>`__ - nerd-dictation GUI front-end that runs as a tray icon.
+- `Numen <https://numen.johngebbie.com>`__ - voice input for desktop computing that also uses VOSK.
 
 
 Limitations
