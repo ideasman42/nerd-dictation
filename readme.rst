@@ -231,7 +231,7 @@ options:
                         - ``PAREC`` (external command, default)
                           See --pulse-device-name option to use a specific pulse-audio device.
                         - ``SOX`` (external command)
-                          For help on setting up ydotool, see ``readme-sox.rst`` in the nerd-dictation repository.
+                          For help on setting up sox, see ``readme-sox.rst`` in the nerd-dictation repository.
   --output OUTPUT_METHOD
                         Method used to at put the result of speech to text.
 

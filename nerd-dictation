@@ -1319,7 +1319,7 @@ def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
             "- ``PAREC`` (external command, default)\n"
             "  See --pulse-device-name option to use a specific pulse-audio device.\n"
             "- ``SOX`` (external command)\n"
-            "  For help on setting up ydotool, see ``readme-sox.rst`` in the nerd-dictation repository.\n"
+            "  For help on setting up sox, see ``readme-sox.rst`` in the nerd-dictation repository.\n"
         ),
         required=False,
     )
