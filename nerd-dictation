@@ -51,7 +51,7 @@ def run_command_or_exit_on_failure(cmd: List[str]) -> None:
     # Don't catch other kinds of exceptions as they should never happen
     # and can be considered a severe error which doesn't need to be made "user friendly".
     except FileNotFoundError as ex:
-        print("Command {!r} not found: {!s}".format(cmd[0], ex))
+        sys.stderr.write("Command {!r} not found: {!s}\n".format(cmd[0], ex))
         sys.exit(1)
 
 
@@ -224,6 +224,7 @@ def simulate_typing_with_dotool(delete_prev_chars: int, text: str) -> None:
             simulate_typing_with_dotool_proc = proc
         elif text == "TEARDOWN":
             import signal
+
             assert simulate_typing_with_dotool_proc is not None
             os.kill(simulate_typing_with_dotool_proc.pid, signal.SIGINT)
             # Not needed, just basic hygiene not to keep killed process reference.
@@ -236,7 +237,6 @@ def simulate_typing_with_dotool(delete_prev_chars: int, text: str) -> None:
     proc = simulate_typing_with_dotool_proc
     assert proc.stdin is not None
     if delete_prev_chars:
-        print(" backspace" * delete_prev_chars)
         proc.stdin.write("key" + (" backspace" * delete_prev_chars) + "\n")
         proc.stdin.flush()
 
