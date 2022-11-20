@@ -175,7 +175,7 @@ usage::
 
        nerd-dictation [-h]  ...
 
-This is a utility that activates text to speech in Linux.
+This is a utility that activates speech to text on Linux.
 While it could use any system currently it uses the VOSK-API.
 
 positional arguments:

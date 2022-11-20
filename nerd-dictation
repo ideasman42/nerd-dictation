@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
-This is a utility that activates text to speech in Linux.
+This is a utility that activates speech to text on Linux.
 While it could use any system currently it uses the VOSK-API.
 """
 
