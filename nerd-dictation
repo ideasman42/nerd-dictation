@@ -915,8 +915,17 @@ def text_from_vosk_pipe(
     # Track this to prevent excessive load when the "partial" result doesn't change.
     json_text_partial_prev = ""
 
-    def handle_fn_wrapper(text: str, is_partial_arg: bool) -> None:
+    def handle_fn_wrapper(text: str, is_partial_arg: bool, is_suspended: bool) -> None:
         nonlocal handled_any
+        nonlocal text_prev
+        nonlocal text_list
+
+        if is_suspended:
+            handled_any = False
+            text_prev = ""
+            text_list = []
+            return
+
         # Simple deferred text input, just accumulate values in a list (finish entering text on exit).
         if not progressive:
             if is_partial_arg:
@@ -926,7 +935,6 @@ def text_from_vosk_pipe(
             return
 
         # Progressive support (type as you speak).
-        nonlocal text_prev
         if progressive_continuous:
             text_curr = process_fn(text)
         else:
@@ -957,6 +965,15 @@ def text_from_vosk_pipe(
 
     # Use code to delay exiting, allowing reading the recording buffer to catch-up.
     code = 0
+
+    suspend = False
+    def USR1(signum, frame):
+        nonlocal suspend
+        suspend = not suspend
+        print("suspend: " + str(suspend) + "\n");
+
+    import signal
+    signal.signal(signal.SIGUSR1, USR1)
 
     if idle_time > 0.0:
         idle_time_prev = time.time()
@@ -991,7 +1008,7 @@ def text_from_vosk_pipe(
                 text = json_data["text"]
                 assert isinstance(text, str)
                 if text:
-                    handle_fn_wrapper(text, False)
+                    handle_fn_wrapper(text, False, suspend)
             else:
                 # Only for comparison, to detect change.
                 # if use_timeout:
@@ -1003,7 +1020,7 @@ def text_from_vosk_pipe(
                     json_data = json.loads(json_text)
                     text = json_data["partial"]
                     if text:
-                        handle_fn_wrapper(text, True)
+                        handle_fn_wrapper(text, True, suspend)
 
             # Monitor the partial output.
             # Finish if no changes are made for `timeout` seconds.
