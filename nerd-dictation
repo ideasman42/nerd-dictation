@@ -970,7 +970,12 @@ def text_from_vosk_pipe(
     def USR1(signum, frame):
         nonlocal suspend
         suspend = not suspend
-        print("suspend: " + str(suspend) + "\n");
+        if suspend:
+            # Clear the buffer:
+            handle_fn_wrapper("", False, suspend)
+            print("Suspended.\n")
+        else:
+            print("Recording.\n")
 
     import signal
     signal.signal(signal.SIGUSR1, USR1)
@@ -998,7 +1003,7 @@ def text_from_vosk_pipe(
         # Only the 1st entry in the loop reads a lot of data due to the time it takes to initialize the VOSK module.
         data = stdout.read(block_size)
 
-        if data:
+        if not suspend and data:
             ok = rec.AcceptWaveform(data)
 
             if ok:
