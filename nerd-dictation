@@ -1165,12 +1165,6 @@ def main_begin(
             user_config = user_config_as_module_or_none(config_override=config_override)
 
         #
-        # User text post processing (when found).
-        #
-        if user_config is not None:
-            text = process_text_with_user_config(user_config, text)
-
-        #
         # Simple text post processing and capitalization.
         #
         text = process_text(
@@ -1179,6 +1173,12 @@ def main_begin(
             numbers_as_digits=numbers_as_digits,
             numbers_use_separator=numbers_use_separator,
         )
+
+        #
+        # User text post processing (when found).
+        #
+        if user_config is not None:
+            text = process_text_with_user_config(user_config, text)
 
         if is_run_on:
             # This is a signal that the end of the sentence has been reached.
