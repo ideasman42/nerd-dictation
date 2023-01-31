@@ -700,9 +700,11 @@ class from_words_to_digits:
     def parse_numbers_in_word_list(
         word_list: List[str],
         numbers_use_separator: bool = False,
+        numbers_min_value: float = None,
     ) -> None:
         i = 0
         i_number_prev = -1
+        orig_word_list = word_list.copy()
         while i < len(word_list):
             if word_list[i] in from_words_to_digits.valid_digit_words:
                 number, suffix, i_next, allow_reformat = from_words_to_digits.parse_number(
@@ -753,7 +755,12 @@ class from_words_to_digits:
                         break
                 if i + 1 != j:
                     word_list[i:j] = ["".join(word_list[i:j])]
-                i = j
+                    orig_word_list[i:j] = ["".join(orig_word_list[i:j])]
+
+                if numbers_min_value is not None and float(word_list[i]) < numbers_min_value:
+                    word_list[i:j] = orig_word_list[i:j]
+
+                i= j
             else:
                 i += 1
 
@@ -790,6 +797,7 @@ def process_text(
     full_sentence: bool = False,
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
+    numbers_min_value: float = None,
 ) -> str:
     """
     Basic post processing on text.
@@ -806,6 +814,7 @@ def process_text(
         from_words_to_digits.parse_numbers_in_word_list(
             words,
             numbers_use_separator=numbers_use_separator,
+            numbers_min_value=numbers_min_value,
         )
 
     # Optional?
@@ -1076,6 +1085,7 @@ def main_begin(
     full_sentence: bool = False,
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
+    numbers_min_value: float = None,
     timeout: float = 0.0,
     idle_time: float = 0.0,
     delay_exit: float = 0.0,
@@ -1172,6 +1182,7 @@ def main_begin(
             full_sentence=full_sentence,
             numbers_as_digits=numbers_as_digits,
             numbers_use_separator=numbers_use_separator,
+            numbers_min_value=numbers_min_value
         )
 
         #
@@ -1449,6 +1460,17 @@ def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
     )
 
     subparse.add_argument(
+        "--numbers-min-value",
+        dest="numbers_min_value",
+        default=None,
+        type=float,
+        help=("Minimum value for numbers to convert from whole words to digits.\n"
+            "This provides for more formal writing and prevents terms like \"no one\"\n"
+            "from being turned into \"no 1\"."),
+        required=False,
+    )
+
+    subparse.add_argument(
         "--input",
         dest="input_method",
         default="PAREC",
@@ -1522,6 +1544,7 @@ def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
             full_sentence=args.full_sentence,
             numbers_as_digits=args.numbers_as_digits,
             numbers_use_separator=args.numbers_use_separator,
+            numbers_min_value=args.numbers_min_value,
             timeout=args.timeout,
             idle_time=min(args.idle_time, 0.5),
             delay_exit=args.delay_exit,
