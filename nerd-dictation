@@ -701,6 +701,7 @@ class from_words_to_digits:
         word_list: List[str],
         numbers_use_separator: bool = False,
         numbers_min_value: float = None,
+        numbers_no_suffix: bool = False,
     ) -> None:
         i = 0
         i_number_prev = -1
@@ -711,6 +712,10 @@ class from_words_to_digits:
                     word_list, i, imply_single_unit=True
                 )
                 if i != i_next:
+                    if numbers_no_suffix and suffix:
+                        i += 1
+                        continue
+
                     word_list[i:i_next] = [
                         ("{:,d}".format(int(number)) if (numbers_use_separator and allow_reformat) else number) + suffix
                     ]
@@ -798,6 +803,7 @@ def process_text(
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
     numbers_min_value: float = None,
+    numbers_no_suffix: bool = False,
 ) -> str:
     """
     Basic post processing on text.
@@ -815,6 +821,7 @@ def process_text(
             words,
             numbers_use_separator=numbers_use_separator,
             numbers_min_value=numbers_min_value,
+            numbers_no_suffix=numbers_no_suffix,
         )
 
     # Optional?
@@ -1086,6 +1093,7 @@ def main_begin(
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
     numbers_min_value: float = None,
+    numbers_no_suffix: bool = False,
     timeout: float = 0.0,
     idle_time: float = 0.0,
     delay_exit: float = 0.0,
@@ -1182,7 +1190,8 @@ def main_begin(
             full_sentence=full_sentence,
             numbers_as_digits=numbers_as_digits,
             numbers_use_separator=numbers_use_separator,
-            numbers_min_value=numbers_min_value
+            numbers_min_value=numbers_min_value,
+            numbers_no_suffix=numbers_no_suffix,
         )
 
         #
@@ -1471,6 +1480,16 @@ def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
     )
 
     subparse.add_argument(
+        "--numbers-no-suffix",
+        dest="numbers_no_suffix",
+        default=False,
+        action="store_true",
+        help=("Suppress number suffixes when --numbers-as-digits is specified.\n"
+            "For example, this will prevent \"first\" from becoming \"1st\"."),
+        required=False,
+    )
+
+    subparse.add_argument(
         "--input",
         dest="input_method",
         default="PAREC",
@@ -1545,6 +1564,7 @@ def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
             numbers_as_digits=args.numbers_as_digits,
             numbers_use_separator=args.numbers_use_separator,
             numbers_min_value=args.numbers_min_value,
+            numbers_no_suffix=args.numbers_no_suffix,
             timeout=args.timeout,
             idle_time=min(args.idle_time, 0.5),
             delay_exit=args.delay_exit,
