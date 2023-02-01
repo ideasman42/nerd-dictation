@@ -1035,7 +1035,6 @@ def text_from_vosk_pipe(
             return
         suspend = True
         do_suspend_pause()
-        pid = os.getpid()
         signal.raise_signal(signal.SIGSTOP)
 
     def handle_sig_cont(_signum: int, _frame: Optional[FrameType]) -> None:
