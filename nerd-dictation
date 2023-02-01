@@ -999,28 +999,52 @@ def text_from_vosk_pipe(
 
     from types import FrameType
 
-    def USR1(_signum: int, _frame: Optional[FrameType]) -> None:
-        nonlocal suspend
+    def do_suspend_pause() -> None:
+        # Clear the buffer:
+        handle_fn_suspended()
+        print("Suspended.\n")
+
+        # Close the recording process.
+        os.kill(ps.pid, signal.SIGINT)
+
+    def do_suspend_resume() -> None:
         nonlocal ps
         nonlocal stdout
 
+        # Resume reading from the recording process.
+        print("Recording.\n")
+
+        ps, stdout = recording_proc_start()
+
+    def handle_sig_usr1(_signum: int, _frame: Optional[FrameType]) -> None:
+        nonlocal suspend
         suspend = not suspend
         if suspend:
-            # Clear the buffer:
-            handle_fn_suspended()
-            print("Suspended.\n")
-
-            # Close the recording process.
-            os.kill(ps.pid, signal.SIGINT)
+            do_suspend_pause()
         else:
-            # Resume reading from the recording process.
-            print("Recording.\n")
+            do_suspend_resume()
 
-            ps, stdout = recording_proc_start()
+    def handle_sig_term(_signum: int, _frame: Optional[FrameType]) -> None:
+        nonlocal suspend
+        if suspend:
+            return
+        suspend = True
+        do_suspend_pause()
+
+    def handle_sig_alrm(_signum: int, _frame: Optional[FrameType]) -> None:
+        nonlocal suspend
+        if not suspend:
+            return
+        suspend = False
+        do_suspend_resume()
 
     import signal
 
-    signal.signal(signal.SIGUSR1, USR1)
+    # Suspend/resume toggle.
+    signal.signal(signal.SIGUSR1, handle_sig_usr1)
+    # Suspend resume from separate signals.
+    signal.signal(signal.SIGTERM, handle_sig_term)
+    signal.signal(signal.SIGALRM, handle_sig_alrm)
 
     if idle_time > 0.0:
         idle_time_prev = time.time()
