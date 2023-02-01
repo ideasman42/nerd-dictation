@@ -210,6 +210,10 @@ def simulate_typing_with_ydotool(delete_prev_chars: int, text: str) -> None:
 # -----------------------------------------------------------------------------
 # Simulate Input: DOTOOL
 #
+
+# NOTE: typed as a string for Py3.6 compatibility.
+simulate_typing_with_dotool_proc: "Optional[subprocess.Popen[str]]" = None
+
 def simulate_typing_with_dotool(delete_prev_chars: int, text: str) -> None:
     cmd = "dotool"
 
@@ -244,8 +248,6 @@ def simulate_typing_with_dotool(delete_prev_chars: int, text: str) -> None:
     proc.stdin.write("type " + text + "\n")
     proc.stdin.flush()
 
-
-simulate_typing_with_dotool_proc: Optional[subprocess.Popen[str]] = None
 
 # -----------------------------------------------------------------------------
 # Simulate Input: WTYPE
@@ -842,7 +844,8 @@ def recording_proc_with_non_blocking_stdout(
     input_method: str,
     sample_rate: int,
     pulse_device_name: str,
-) -> Tuple[subprocess.Popen[bytes], IO[bytes]]:
+    # NOTE: typed as a string for Py3.6 compatibility.
+) -> "Tuple[subprocess.Popen[bytes], IO[bytes]]":
     if input_method == "PAREC":
         cmd = (
             "parec",
@@ -911,7 +914,8 @@ def text_from_vosk_pipe(
         )
         sys.exit(1)
 
-    def recording_proc_start() -> Tuple[subprocess.Popen[bytes], IO[bytes]]:
+    # NOTE: typed as a string for Py3.6 compatibility.
+    def recording_proc_start() -> "Tuple[subprocess.Popen[bytes], IO[bytes]]":
         return recording_proc_with_non_blocking_stdout(input_method, sample_rate, pulse_device_name)
 
     ps, stdout = recording_proc_start()
