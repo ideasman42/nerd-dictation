@@ -1002,6 +1002,9 @@ def text_from_vosk_pipe(
     from types import FrameType
 
     def do_suspend_pause() -> None:
+        # Don't include any of the current analysis when resuming.
+        rec.Reset()
+
         # Clear the buffer:
         handle_fn_suspended()
         print("Suspended.\n")
