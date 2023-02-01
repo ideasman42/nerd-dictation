@@ -837,10 +837,11 @@ def process_text(
 # Text from VOSK
 #
 
+
 def recording_proc_with_non_blocking_stdout(
-        input_method: str,
-        sample_rate: int,
-        pulse_device_name: str,
+    input_method: str,
+    sample_rate: int,
+    pulse_device_name: str,
 ) -> Tuple[subprocess.Popen[bytes], IO[bytes]]:
     if input_method == "PAREC":
         cmd = (
@@ -885,6 +886,7 @@ def recording_proc_with_non_blocking_stdout(
     file_handle_make_non_blocking(stdout)
 
     return ps, stdout
+
 
 def text_from_vosk_pipe(
     *,
@@ -1024,27 +1026,30 @@ def text_from_vosk_pipe(
         else:
             do_suspend_resume()
 
-    def handle_sig_term(_signum: int, _frame: Optional[FrameType]) -> None:
+    def handle_sig_usr2(_signum: int, _frame: Optional[FrameType]) -> None:
         nonlocal suspend
         if suspend:
             return
         suspend = True
         do_suspend_pause()
+        pid = os.getpid()
+        signal.raise_signal(signal.SIGSTOP)
 
-    def handle_sig_alrm(_signum: int, _frame: Optional[FrameType]) -> None:
+    def handle_sig_cont(_signum: int, _frame: Optional[FrameType]) -> None:
         nonlocal suspend
         if not suspend:
             return
         suspend = False
         do_suspend_resume()
+        signal.raise_signal(signal.SIGCONT)
 
     import signal
 
     # Suspend/resume toggle.
     signal.signal(signal.SIGUSR1, handle_sig_usr1)
     # Suspend resume from separate signals.
-    signal.signal(signal.SIGTERM, handle_sig_term)
-    signal.signal(signal.SIGALRM, handle_sig_alrm)
+    signal.signal(signal.SIGUSR2, handle_sig_usr2)
+    signal.signal(signal.SIGCONT, handle_sig_cont)
 
     if idle_time > 0.0:
         idle_time_prev = time.time()
