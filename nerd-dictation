@@ -59,7 +59,8 @@ def touch(filepath: str, mtime: Optional[float] = None) -> None:
     if os.path.exists(filepath):
         os.utime(filepath, None if mtime is None else (mtime, mtime))
     else:
-        open(filepath, "ab").close()
+        with open(filepath, "ab") as _:
+            pass
         if mtime is not None:
             try:
                 os.utime(filepath, (mtime, mtime))
@@ -998,7 +999,7 @@ def text_from_vosk_pipe(
 
     from types import FrameType
 
-    def USR1(signum: int, frame: Optional[FrameType]) -> None:
+    def USR1(_signum: int, _frame: Optional[FrameType]) -> None:
         nonlocal suspend
         nonlocal ps
         nonlocal stdout
