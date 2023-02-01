@@ -65,7 +65,7 @@ See ``nerd-dictation begin --help`` for details on how to access these options.
 Dependencies
 ============
 
-- Python 3.
+- Python 3.6 (or newer).
 - The VOSK-API.
 - An audio recording utility (``parec`` by default).
 - An input simulation utility (``xdotool`` by default).
