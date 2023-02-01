@@ -200,7 +200,9 @@ usage::
                             [--delay-exit SECONDS]
                             [--punctuate-from-previous-timeout SECONDS]
                             [--full-sentence] [--numbers-as-digits]
-                            [--numbers-use-separator] [--input INPUT_METHOD]
+                            [--numbers-use-separator]
+                            [--numbers-min-value NUMBERS_MIN_VALUE]
+                            [--numbers-no-suffix] [--input INPUT_METHOD]
                             [--output OUTPUT_METHOD]
                             [--simulate-input-tool SIMULATE_INPUT_TOOL]
                             [- ...]
@@ -242,6 +244,12 @@ options:
   --numbers-as-digits   Convert numbers into digits instead of using whole words.
   --numbers-use-separator
                         Use a comma separators for numbers.
+  --numbers-min-value NUMBERS_MIN_VALUE
+                        Minimum value for numbers to convert from whole words to digits.
+                        This provides for more formal writing and prevents terms like "no one"
+                        from being turned into "no 1".
+  --numbers-no-suffix   Suppress number suffixes when --numbers-as-digits is specified.
+                        For example, this will prevent "first" from becoming "1st".
   --input INPUT_METHOD  Specify input method to be used for audio recording. Valid methods: PAREC, SOX
 
                         - ``PAREC`` (external command, default)
