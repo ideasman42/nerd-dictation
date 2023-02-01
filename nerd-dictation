@@ -1100,7 +1100,8 @@ def text_from_vosk_pipe(
                     json_text_partial_prev = json_text
 
                     json_data = json.loads(json_text)
-                    text = json_data["partial"]
+                    # In rare cases this can be unset (when resuming from being suspended).
+                    text = json_data.get("partial", "")
                     if text:
                         handle_fn_wrapper(text, True)
 
