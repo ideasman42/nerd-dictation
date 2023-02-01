@@ -765,7 +765,7 @@ class from_words_to_digits:
                 if numbers_min_value is not None and float(word_list[i]) < numbers_min_value:
                     word_list[i:j] = orig_word_list[i:j]
 
-                i= j
+                i = j
             else:
                 i += 1
 
@@ -983,6 +983,7 @@ def text_from_vosk_pipe(
     code = 0
 
     suspend = False
+
     def USR1(signum, frame):
         nonlocal suspend
         suspend = not suspend
@@ -994,6 +995,7 @@ def text_from_vosk_pipe(
             print("Recording.\n")
 
     import signal
+
     signal.signal(signal.SIGUSR1, USR1)
 
     if idle_time > 0.0:
@@ -1473,9 +1475,11 @@ def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
         dest="numbers_min_value",
         default=None,
         type=float,
-        help=("Minimum value for numbers to convert from whole words to digits.\n"
-            "This provides for more formal writing and prevents terms like \"no one\"\n"
-            "from being turned into \"no 1\"."),
+        help=(
+            "Minimum value for numbers to convert from whole words to digits.\n"
+            'This provides for more formal writing and prevents terms like "no one"\n'
+            'from being turned into "no 1".'
+        ),
         required=False,
     )
 
@@ -1484,8 +1488,10 @@ def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
         dest="numbers_no_suffix",
         default=False,
         action="store_true",
-        help=("Suppress number suffixes when --numbers-as-digits is specified.\n"
-            "For example, this will prevent \"first\" from becoming \"1st\"."),
+        help=(
+            "Suppress number suffixes when --numbers-as-digits is specified.\n"
+            'For example, this will prevent "first" from becoming "1st".'
+        ),
         required=False,
     )
 
