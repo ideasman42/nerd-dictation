@@ -934,12 +934,11 @@ def text_from_vosk_pipe(
     def handle_fn_wrapper(text: str, is_partial_arg: bool, is_suspended: bool) -> None:
         nonlocal handled_any
         nonlocal text_prev
-        nonlocal text_list
 
         if is_suspended:
             handled_any = False
             text_prev = ""
-            text_list = []
+            text_list.clear()
             return
 
         # Simple deferred text input, just accumulate values in a list (finish entering text on exit).
@@ -1073,7 +1072,7 @@ def text_from_vosk_pipe(
     text = json_data["text"]
     assert isinstance(text, str)
     if text:
-        handle_fn_wrapper(text, False)
+        handle_fn_wrapper(text, False, False)
 
     if not progressive:
         # We never arrive here needing deletions
