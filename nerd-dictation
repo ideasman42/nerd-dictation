@@ -244,7 +244,7 @@ def simulate_typing_with_dotool(delete_prev_chars: int, text: str) -> None:
     proc.stdin.flush()
 
 
-simulate_typing_with_dotool_proc = None
+simulate_typing_with_dotool_proc: Optional[subprocess.Popen[str]] = None
 
 # -----------------------------------------------------------------------------
 # Simulate Input: WTYPE
@@ -700,7 +700,7 @@ class from_words_to_digits:
     def parse_numbers_in_word_list(
         word_list: List[str],
         numbers_use_separator: bool = False,
-        numbers_min_value: float = None,
+        numbers_min_value: Optional[float] = None,
         numbers_no_suffix: bool = False,
     ) -> None:
         i = 0
@@ -802,7 +802,7 @@ def process_text(
     full_sentence: bool = False,
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
-    numbers_min_value: float = None,
+    numbers_min_value: Optional[float] = None,
     numbers_no_suffix: bool = False,
 ) -> str:
     """
@@ -920,7 +920,7 @@ def text_from_vosk_pipe(
 
     # Collect the output used when time-out is enabled.
     if not (progressive and progressive_continuous):
-        text_list = []
+        text_list: List[str] = []
 
     # Set true if handle has been called.
     handled_any = False
@@ -938,7 +938,8 @@ def text_from_vosk_pipe(
         if is_suspended:
             handled_any = False
             text_prev = ""
-            text_list.clear()
+            if not (progressive and progressive_continuous):
+                text_list.clear()
             return
 
         # Simple deferred text input, just accumulate values in a list (finish entering text on exit).
@@ -983,7 +984,9 @@ def text_from_vosk_pipe(
 
     suspend = False
 
-    def USR1(signum, frame):
+    from types import FrameType
+
+    def USR1(signum: int, frame: Optional[FrameType]) -> None:
         nonlocal suspend
         suspend = not suspend
         if suspend:
@@ -1093,7 +1096,7 @@ def main_begin(
     full_sentence: bool = False,
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
-    numbers_min_value: float = None,
+    numbers_min_value: Optional[float] = None,
     numbers_no_suffix: bool = False,
     timeout: float = 0.0,
     idle_time: float = 0.0,
@@ -1296,7 +1299,7 @@ def argparse_generic_command_cookie(subparse: argparse.ArgumentParser) -> None:
     )
 
 
-def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
+def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
     subparse = subparsers.add_parser(
         "begin",
         help="Begin dictation.",
@@ -1581,7 +1584,7 @@ def argparse_create_begin(subparsers: argparse._SubParsersAction) -> None:
     )
 
 
-def argparse_create_end(subparsers: argparse._SubParsersAction) -> None:
+def argparse_create_end(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
     subparse = subparsers.add_parser(
         "end",
         help="End dictation.",
@@ -1600,7 +1603,7 @@ This ends dictation, causing the text to be typed in.
     )
 
 
-def argparse_create_cancel(subparsers: argparse._SubParsersAction) -> None:
+def argparse_create_cancel(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
     subparse = subparsers.add_parser(
         "cancel",
         help="Cancel dictation.",
