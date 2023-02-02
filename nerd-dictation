@@ -1099,8 +1099,11 @@ def text_from_vosk_pipe(
         # -1=cancel, 0=continue, 1=finish.
         code = exit_fn(handled_any)
 
+        # Note that when suspend is enabled the entire process is suspended
+        # and this look should not run.
+        # This check is simply done to prevent any logic running before the process is actually suspended,
+        # although in practice it doesn't look to be a problem.
         if suspend:
-            time.sleep(0.25)
             continue
 
         if idle_time > 0.0:
