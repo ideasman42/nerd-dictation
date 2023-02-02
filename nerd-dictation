@@ -214,6 +214,7 @@ def simulate_typing_with_ydotool(delete_prev_chars: int, text: str) -> None:
 # NOTE: typed as a string for Py3.6 compatibility.
 simulate_typing_with_dotool_proc: "Optional[subprocess.Popen[str]]" = None
 
+
 def simulate_typing_with_dotool(delete_prev_chars: int, text: str) -> None:
     cmd = "dotool"
 
@@ -948,6 +949,9 @@ def text_from_vosk_pipe(
     # Track this to prevent excessive load when the "partial" result doesn't change.
     json_text_partial_prev = ""
 
+    # -----------------------------
+    # Utilities for Text Processing
+
     def handle_fn_suspended() -> None:
         nonlocal handled_any
         nonlocal text_prev
@@ -995,17 +999,48 @@ def text_from_vosk_pipe(
 
         handled_any = True
 
+    # -----------------------------------------------
+    # Utilities for accessing results on `rec` (VOSK)
+
+    def rec_handle_fn_wrapper_from_final_result() -> str:
+        json_text = rec.FinalResult()
+        assert isinstance(json_text, str)
+        json_data = json.loads(json_text)
+        text = json_data["text"]
+        assert isinstance(text, str)
+        if text:
+            handle_fn_wrapper(text, False)
+        return json_text
+
+    def rec_handle_fn_wrapper_from_partial_result(json_text_partial_prev: str) -> str:
+        json_text = rec.PartialResult()
+        # Without this, there are *many* calls with the same partial text.
+        if json_text_partial_prev != json_text:
+            json_text_partial_prev = json_text
+
+            json_data = json.loads(json_text)
+            # In rare cases this can be unset (when resuming from being suspended).
+            text = json_data.get("partial", "")
+            if text:
+                handle_fn_wrapper(text, True)
+        return json_text_partial_prev
+
     # Support setting up input simulation state.
     handle_fn(SIMULATE_INPUT_CODE_COMMAND, "SETUP")
 
     # Use code to delay exiting, allowing reading the recording buffer to catch-up.
     code = 0
 
+    # ---------------
+    # Signal Handling
+
     suspend = False
 
     from types import FrameType
 
     def do_suspend_pause() -> None:
+        rec_handle_fn_wrapper_from_final_result()
+
         # Don't include any of the current analysis when resuming.
         rec.Reset()
 
@@ -1057,6 +1092,9 @@ def text_from_vosk_pipe(
     signal.signal(signal.SIGUSR2, handle_sig_usr2)
     signal.signal(signal.SIGCONT, handle_sig_cont)
 
+    # ---------
+    # Main Loop
+
     if idle_time > 0.0:
         idle_time_prev = time.time()
 
@@ -1085,28 +1123,11 @@ def text_from_vosk_pipe(
         data = stdout.read(block_size)
         if data:
             ok = rec.AcceptWaveform(data)
-
             if ok:
-                json_text = rec.Result()
                 json_text_partial_prev = ""
-                json_data = json.loads(json_text)
-                text = json_data["text"]
-                assert isinstance(text, str)
-                if text:
-                    handle_fn_wrapper(text, False)
+                json_text = rec_handle_fn_wrapper_from_final_result()
             else:
-                # Only for comparison, to detect change.
-                # if use_timeout:
-                json_text = rec.PartialResult()
-                # Without this, there are *many* calls with the same partial text.
-                if json_text_partial_prev != json_text:
-                    json_text_partial_prev = json_text
-
-                    json_data = json.loads(json_text)
-                    # In rare cases this can be unset (when resuming from being suspended).
-                    text = json_data.get("partial", "")
-                    if text:
-                        handle_fn_wrapper(text, True)
+                json_text_partial_prev = rec_handle_fn_wrapper_from_partial_result(json_text_partial_prev)
 
             # Monitor the partial output.
             # Finish if no changes are made for `timeout` seconds.
@@ -1130,12 +1151,7 @@ def text_from_vosk_pipe(
         sys.exit(0)
 
     # This writes many JSON blocks, use the last one.
-    json_text = rec.FinalResult()
-    json_data = json.loads(json_text)
-    text = json_data["text"]
-    assert isinstance(text, str)
-    if text:
-        handle_fn_wrapper(text, False)
+    rec_handle_fn_wrapper_from_final_result()
 
     if not progressive:
         # We never arrive here needing deletions
