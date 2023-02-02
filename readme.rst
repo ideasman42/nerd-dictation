@@ -199,7 +199,7 @@ usage::
                             [--pulse-device-name IDENTIFIER]
                             [--sample-rate HZ] [--defer-output] [--continuous]
                             [--timeout SECONDS] [--idle-time SECONDS]
-                            [--delay-exit SECONDS]
+                            [--delay-exit SECONDS] [--suspend-on-start]
                             [--punctuate-from-previous-timeout SECONDS]
                             [--full-sentence] [--numbers-as-digits]
                             [--numbers-use-separator]
@@ -237,6 +237,9 @@ options:
   --delay-exit SECONDS  The time to continue running after an exit request.
                         this can be useful so "push to talk" setups can be released while you finish speaking
                         (zero disables).
+  --suspend-on-start    Start the process and immediately suspend.
+                        Intended for use when nerd-dictation is kept open
+                        where resume/suspend is used for dictation instead of begin/end.
   --punctuate-from-previous-timeout SECONDS
                         The time-out in seconds for detecting the state of dictation from the previous recording,
                         this can be useful so punctuation it is added before entering the dictation(zero disables).
