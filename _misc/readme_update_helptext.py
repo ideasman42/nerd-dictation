@@ -19,13 +19,12 @@ def patch_help_test_all(help_output):
     return help_output
 
 
-def patch_help_test_main(help_output):
-    help_output = help_output.replace('{begin,end,cancel}', '')
+def patch_help_test_main(help_output, sub_commands):
+    help_output = help_output.replace('{' + ','.join(sub_commands) + '}', '')
     help_output = re.sub(r"[ \t]+(\n|\Z)", r"\1", help_output)
 
-    help_output = help_output.replace("    begin ", "    :begin: ")
-    help_output = help_output.replace("    end ", "    :end: ")
-    help_output = help_output.replace("    cancel ", "    :cancel: ")
+    for sub_command in sub_commands:
+        help_output = help_output.replace("    {:s} ".format(sub_command), "    :{:s}: ".format(sub_command))
     return help_output
 
 
@@ -38,6 +37,27 @@ def patch_help_test_for_begin(help_output):
     return help_output
 
 
+def subcommands_from_help_output(help_output):
+    find = "\npositional arguments:\n"
+    i = help_output.find(find)
+    if i == -1:
+        # Should never happen, unless Python change their text.
+        raise Exception("Not found! " + repr(find))
+
+    i += len(find)
+    beg = help_output.find("{", i)
+    if beg == -1:
+        print("Error: could not find sub-command end '}'")
+        return None
+    beg += 1
+    end = help_output.find("}", beg)
+    if end == -1:
+        print("Error: could not find sub-command end '}'")
+        return None
+
+    return help_output[beg:end].split(",")
+
+
 def main():
     base_command = "python3", os.path.join(BASE_DIR, COMMAND_NAME)
     p = subprocess.run(
@@ -45,8 +65,12 @@ def main():
         stdout=subprocess.PIPE,
     )
     help_output = [(p.stdout.decode("utf-8").rstrip() + "\n\n")]
+    # Extract sub-commands.
+    sub_commands = subcommands_from_help_output(help_output[0])
+    if sub_commands is None:
+        return
 
-    for sub_command in ("begin", "end", "cancel"):
+    for sub_command in sub_commands:
         p = subprocess.run([*base_command, sub_command, "--help"], stdout=subprocess.PIPE)
         title = "Subcommand: ``" + sub_command + "``"
         help_output.append(
@@ -61,7 +85,7 @@ def main():
         help_output[i] = re.sub(r"[ \t]+(\n|\Z)", r"\1", help_output[i])
         help_output[i] = patch_help_test_all(help_output[i])
 
-    help_output[0] = patch_help_test_main(help_output[0])
+    help_output[0] = patch_help_test_main(help_output[0], sub_commands)
     help_output[1] = patch_help_test_for_begin(help_output[1])
 
     help_output[0] = (

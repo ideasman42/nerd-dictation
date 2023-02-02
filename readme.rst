@@ -180,12 +180,14 @@ While it could use any system currently it uses the VOSK-API.
 
 positional arguments:
 
-    :begin:             Begin dictation.
-    :end:               End dictation.
-    :cancel:            Cancel dictation.
+    :begin:               Begin dictation.
+    :end:                 End dictation.
+    :cancel:              Cancel dictation.
+    :suspend:             Suspend the dictation process.
+    :resume:              Resume the dictation process.
 
 options:
-  -h, --help          show this help message and exit
+  -h, --help            show this help message and exit
 
 Subcommand: ``begin``
 ---------------------
@@ -296,6 +298,38 @@ usage::
        nerd-dictation cancel [-h] [--cookie FILE_PATH]
 
 This cancels dictation.
+
+options:
+  -h, --help          show this help message and exit
+  --cookie FILE_PATH  Location for writing a temporary cookie (this file is monitored to begin/end dictation).
+
+Subcommand: ``suspend``
+-----------------------
+
+usage::
+
+       nerd-dictation suspend [-h] [--cookie FILE_PATH]
+
+Suspend recording audio & the dictation process.
+
+This is useful on slower systems or when large language models take longer to load.
+Recording audio is stopped and the process is paused to remove any CPU overhead.
+
+options:
+  -h, --help          show this help message and exit
+  --cookie FILE_PATH  Location for writing a temporary cookie (this file is monitored to begin/end dictation).
+
+Subcommand: ``resume``
+----------------------
+
+usage::
+
+       nerd-dictation resume [-h] [--cookie FILE_PATH]
+
+Resume recording audio & the dictation process.
+
+This is to be used to resume after the 'suspend' command.
+When nerd-dictation is not suspended, this does nothing.
 
 options:
   -h, --help          show this help message and exit

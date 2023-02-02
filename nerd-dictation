@@ -955,9 +955,12 @@ def text_from_vosk_pipe(
     def handle_fn_suspended() -> None:
         nonlocal handled_any
         nonlocal text_prev
+        nonlocal json_text_partial_prev
 
         handled_any = False
         text_prev = ""
+        json_text_partial_prev = ""
+
         if not (progressive and progressive_continuous):
             text_list.clear()
 
@@ -1211,6 +1214,10 @@ def main_begin(
         is_run_on = age_in_seconds is not None and (age_in_seconds < punctuate_from_previous_timeout)
         del age_in_seconds
 
+    # Write the PID, needed for suspend/resume sub-commands to know the PID of the current process.
+    with open(path_to_cookie, "w", encoding="utf-8") as fh:
+        fh.write(str(os.getpid()))
+
     # Force zero time-stamp so a fast begin/end (tap) action
     # doesn't leave dictation running.
     touch(path_to_cookie, mtime=0)
@@ -1350,6 +1357,9 @@ def main_end(
     if not path_to_cookie:
         path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
 
+    # Resume (does nothing if not suspended), so suspending doesn't prevent the cancel operation.
+    main_suspend(path_to_cookie=path_to_cookie, suspend=False, verbose=False)
+
     touch(path_to_cookie)
 
 
@@ -1360,7 +1370,41 @@ def main_cancel(
     if not path_to_cookie:
         path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
 
+    # Resume (does nothing if not suspended), so suspending doesn't prevent the cancel operation.
+    main_suspend(path_to_cookie=path_to_cookie, suspend=False, verbose=False)
+
     file_remove_if_exists(path_to_cookie)
+
+
+def main_suspend(
+    *,
+    path_to_cookie: str = "",
+    suspend: bool,
+    verbose: bool,
+) -> None:
+    import signal
+
+    if not path_to_cookie:
+        path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
+
+    if not os.path.exists(path_to_cookie):
+        if verbose:
+            sys.stderr.write("No running nerd-dictation cookie found at: {:s}, abort!\n".format(path_to_cookie))
+        return
+
+    with open(path_to_cookie, "r", encoding="utf-8") as fh:
+        data = fh.read()
+    try:
+        pid = int(data)
+    except Exception as ex:
+        if verbose:
+            sys.stderr.write("Failed to read PID with error {!r}, abort!\n".format(ex))
+        return
+
+    if suspend:
+        os.kill(pid, signal.SIGUSR2)
+    else:  # Resume.
+        os.kill(pid, signal.SIGCONT)
 
 
 def argparse_generic_command_cookie(subparse: argparse.ArgumentParser) -> None:
@@ -1696,14 +1740,66 @@ def argparse_create_cancel(subparsers: "argparse._SubParsersAction[argparse.Argu
     )
 
 
+def argparse_create_suspend(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+    subparse = subparsers.add_parser(
+        "suspend",
+        help="Suspend the dictation process.",
+        description=(
+            "Suspend recording audio & the dictation process.\n"
+            "\n"
+            "This is useful on slower systems or when large language models take longer to load.\n"
+            "Recording audio is stopped and the process is paused to remove any CPU overhead."
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+
+    argparse_generic_command_cookie(subparse)
+
+    subparse.set_defaults(
+        func=lambda args: main_suspend(
+            path_to_cookie=args.path_to_cookie,
+            suspend=True,
+            verbose=True,
+        ),
+    )
+
+
+def argparse_create_resume(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+    subparse = subparsers.add_parser(
+        "resume",
+        help="Resume the dictation process.",
+        description=(
+            "Resume recording audio & the dictation process.\n"
+            "\n"
+            "This is to be used to resume after the 'suspend' command.\n"
+            "When nerd-dictation is not suspended, this does nothing.\n"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+
+    argparse_generic_command_cookie(subparse)
+
+    subparse.set_defaults(
+        func=lambda args: main_suspend(
+            path_to_cookie=args.path_to_cookie,
+            suspend=False,
+            verbose=True,
+        ),
+    )
+
+
 def argparse_create() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 
     subparsers = parser.add_subparsers()
 
     argparse_create_begin(subparsers)
+
     argparse_create_end(subparsers)
     argparse_create_cancel(subparsers)
+
+    argparse_create_suspend(subparsers)
+    argparse_create_resume(subparsers)
 
     return parser
 
