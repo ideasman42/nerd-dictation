@@ -59,6 +59,12 @@ Output Type
 User Configuration Script
    User configuration is just a Python script which can be used to manipulate text using Python's full feature set.
 
+Suspend/Resume
+   Initial load time can be an issue for users on slower systems or with some of the larger language-models,
+   in this case suspend/resume can be useful.
+   While suspended all data is kept in memory and the process is stopped.
+   Audio recording is stopped and restarted on resume.
+
 See ``nerd-dictation begin --help`` for details on how to access these options.
 
 
