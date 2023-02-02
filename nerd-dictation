@@ -1063,15 +1063,7 @@ def text_from_vosk_pipe(
 
         ps, stdout = recording_proc_start()
 
-    def handle_sig_usr1(_signum: int, _frame: Optional[FrameType]) -> None:
-        nonlocal suspend
-        suspend = not suspend
-        if suspend:
-            do_suspend_pause()
-        else:
-            do_suspend_resume()
-
-    def handle_sig_usr2(_signum: int, _frame: Optional[FrameType]) -> None:
+    def handle_sig_suspend_from_usr1(_signum: int, _frame: Optional[FrameType]) -> None:
         nonlocal suspend
         if suspend:
             return
@@ -1079,7 +1071,7 @@ def text_from_vosk_pipe(
         do_suspend_pause()
         signal.raise_signal(signal.SIGSTOP)
 
-    def handle_sig_cont(_signum: int, _frame: Optional[FrameType]) -> None:
+    def handle_sig_resume_from_cont(_signum: int, _frame: Optional[FrameType]) -> None:
         nonlocal suspend
         if not suspend:
             return
@@ -1089,11 +1081,9 @@ def text_from_vosk_pipe(
 
     import signal
 
-    # Suspend/resume toggle.
-    signal.signal(signal.SIGUSR1, handle_sig_usr1)
     # Suspend resume from separate signals.
-    signal.signal(signal.SIGUSR2, handle_sig_usr2)
-    signal.signal(signal.SIGCONT, handle_sig_cont)
+    signal.signal(signal.SIGUSR1, handle_sig_suspend_from_usr1)
+    signal.signal(signal.SIGCONT, handle_sig_resume_from_cont)
 
     # ---------
     # Main Loop
@@ -1402,7 +1392,7 @@ def main_suspend(
         return
 
     if suspend:
-        os.kill(pid, signal.SIGUSR2)
+        os.kill(pid, signal.SIGUSR1)
     else:  # Resume.
         os.kill(pid, signal.SIGCONT)
 
