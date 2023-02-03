@@ -917,13 +917,6 @@ def text_from_vosk_pipe(
         )
         sys.exit(1)
 
-    # NOTE: typed as a string for Py3.6 compatibility.
-    def recording_proc_start() -> "Tuple[subprocess.Popen[bytes], IO[bytes]]":
-        return recording_proc_with_non_blocking_stdout(input_method, sample_rate, pulse_device_name)
-
-    if not suspend_on_start:
-        ps, stdout = recording_proc_start()
-
     # `mypy` doesn't know about VOSK.
     import vosk  # type: ignore
 
@@ -934,6 +927,13 @@ def text_from_vosk_pipe(
     model = vosk.Model(vosk_model_dir)
     rec = vosk.KaldiRecognizer(model, sample_rate)
     if verbose: sys.stderr.write("Model loaded.\n")
+
+    # NOTE: typed as a string for Py3.6 compatibility.
+    def recording_proc_start() -> "Tuple[subprocess.Popen[bytes], IO[bytes]]":
+        return recording_proc_with_non_blocking_stdout(input_method, sample_rate, pulse_device_name)
+
+    if not suspend_on_start:
+        ps, stdout = recording_proc_start()
 
     # 1mb
     block_size = 1_048_576
