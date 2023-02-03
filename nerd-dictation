@@ -1017,7 +1017,7 @@ def text_from_vosk_pipe(
             handle_fn_wrapper(text, False)
         return json_text
 
-    def rec_handle_fn_wrapper_from_partial_result(json_text_partial_prev: str) -> str:
+    def rec_handle_fn_wrapper_from_partial_result(json_text_partial_prev: str) -> Tuple[str, str]:
         json_text = rec.PartialResult()
         # Without this, there are *many* calls with the same partial text.
         if json_text_partial_prev != json_text:
@@ -1028,7 +1028,7 @@ def text_from_vosk_pipe(
             text = json_data.get("partial", "")
             if text:
                 handle_fn_wrapper(text, True)
-        return json_text_partial_prev
+        return json_text, json_text_partial_prev
 
     # Support setting up input simulation state.
     handle_fn(SIMULATE_INPUT_CODE_COMMAND, "SETUP")
@@ -1131,7 +1131,7 @@ def text_from_vosk_pipe(
                 json_text_partial_prev = ""
                 json_text = rec_handle_fn_wrapper_from_final_result()
             else:
-                json_text_partial_prev = rec_handle_fn_wrapper_from_partial_result(json_text_partial_prev)
+                json_text, json_text_partial_prev = rec_handle_fn_wrapper_from_partial_result(json_text_partial_prev)
 
             # Monitor the partial output.
             # Finish if no changes are made for `timeout` seconds.
