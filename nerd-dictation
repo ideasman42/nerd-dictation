@@ -1071,7 +1071,9 @@ def text_from_vosk_pipe(
             return
         suspend = True
         do_suspend_pause()
-        signal.raise_signal(signal.SIGSTOP)
+        # Use when Py3.6 compatibility is dropped.
+        # `signal.raise_signal(signal.SIGSTOP)`
+        os.kill(os.getpid(), signal.SIGSTOP)
 
     def handle_sig_resume_from_cont(_signum: int, _frame: Optional[FrameType]) -> None:
         nonlocal suspend
@@ -1087,7 +1089,9 @@ def text_from_vosk_pipe(
     signal.signal(signal.SIGCONT, handle_sig_resume_from_cont)
 
     if suspend:
-        signal.raise_signal(signal.SIGSTOP)
+        # Use when Py3.6 compatibility is dropped.
+        # `signal.raise_signal(signal.SIGSTOP)`
+        os.kill(os.getpid(), signal.SIGSTOP)
 
     # ---------
     # Main Loop
