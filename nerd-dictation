@@ -1086,6 +1086,11 @@ def text_from_vosk_pipe(
 
     # Suspend resume from separate signals.
     signal.signal(signal.SIGUSR1, handle_sig_suspend_from_usr1)
+
+    # This allows you to stop via ctrl+z and resume with `fg` at a terminal.
+    # This intentionally re-uses the handle_sig_suspend_from_usr1 handler:
+    signal.signal(signal.SIGTSTP, handle_sig_suspend_from_usr1)
+
     signal.signal(signal.SIGCONT, handle_sig_resume_from_cont)
 
     if suspend:
