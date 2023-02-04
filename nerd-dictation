@@ -908,6 +908,7 @@ def text_from_vosk_pipe(
     pulse_device_name: str = "",
     suspend_on_start: bool = False,
     verbose: int = 0,
+    vosk_grammar_file: str = "",
 ) -> bool:
     # Delay some imports until recording has started to avoid minor delays.
     import json
@@ -931,11 +932,22 @@ def text_from_vosk_pipe(
 
     vosk.SetLogLevel(-1)
 
+    if not vosk_grammar_file:
+        grammar_json = ""
+    else:
+        with open(vosk_grammar_file) as x:
+            grammar_json = x.read()
+
     # Allow for loading the model to take some time:
     if verbose >= 1:
         sys.stderr.write("Loading model...\n")
     model = vosk.Model(vosk_model_dir)
-    rec = vosk.KaldiRecognizer(model, sample_rate)
+
+    if grammar_json == "":
+        rec = vosk.KaldiRecognizer(model, sample_rate)
+    else:
+        rec = vosk.KaldiRecognizer(model, sample_rate, grammar_json)
+
     if verbose >= 1:
         sys.stderr.write("Model loaded.\n")
 
@@ -1206,6 +1218,7 @@ def main_begin(
     simulate_input_tool: str = "XDOTOOL",
     suspend_on_start: bool = False,
     verbose: int = 0,
+    vosk_grammar_file: str = "",
 ) -> None:
     """
     Initialize audio recording, then full text to speech conversion can take place.
@@ -1365,6 +1378,7 @@ def main_begin(
         handle_fn=handle_fn,
         suspend_on_start=suspend_on_start,
         verbose=verbose,
+        vosk_grammar_file=vosk_grammar_file,
     )
 
     if not found_any:
@@ -1476,6 +1490,20 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         type=str,
         metavar="DIR",
         help=("Path to the VOSK model, see: https://alphacephei.com/vosk/models"),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--vosk-grammar-file",
+        default=None,
+        dest="vosk_grammar_file",
+        type=str,
+        metavar="DIR",
+        help=(
+            "Path to a JSON grammar file.  This restricts the phrases recognized by VOSK for\n"
+            "better accuracy.  See `vosk_recognizer_new_grm` in the API reference:\n"
+            "  https://github.com/alphacep/vosk-api/blob/master/src/vosk_api.h"
+        ),
         required=False,
     )
 
@@ -1754,6 +1782,7 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
             simulate_input_tool=args.simulate_input_tool,
             suspend_on_start=args.suspend_on_start,
             verbose=args.verbose,
+            vosk_grammar_file=args.vosk_grammar_file,
         ),
     )
 
