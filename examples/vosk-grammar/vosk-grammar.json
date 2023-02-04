@@ -1,0 +1,33 @@
+[
+    "cd",
+    "slash",
+    "grep",
+    "root",
+    "pass",
+    "pipe",
+    "cut",
+
+    "dash",
+    "colon",
+    "comma",
+
+    "back",
+    "backspace",
+    "tab",
+    "space",
+    "enter",
+
+    "up",
+    "down",
+    "left",
+    "right",
+    "end",
+    "home",
+    "delete",
+
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o",
+    "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+
+    "[unk]"
+]
