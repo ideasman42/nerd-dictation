@@ -721,7 +721,8 @@ class from_words_to_digits:
                         continue
 
                     word_list[i:i_next] = [
-                        ("{:,d}".format(int(number)) if (numbers_use_separator and allow_reformat) else number) + suffix
+                        ("{:,d}".format(int(number)) if (numbers_use_separator and allow_reformat) else number)
+                        + suffix
                     ]
 
                     if (i_number_prev != -1) and (i_number_prev + 1 != i):
@@ -912,7 +913,8 @@ def text_from_vosk_pipe(
 
     if not os.path.exists(vosk_model_dir):
         sys.stderr.write(
-            "Please download the model from https://alphacephei.com/vosk/models and unpack it to %r.\n" % vosk_model_dir
+            "Please download the model from "
+            "https://alphacephei.com/vosk/models and unpack it to {!r}.\n".format(vosk_model_dir)
         )
         sys.exit(1)
 
