@@ -1711,7 +1711,12 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         dest="verbose",
         default=0,
         type=int,
-        help=("Verbose output"),
+        help=(
+            "Verbosity level, defaults to zero (no output except for errors)\n"
+            "\n"
+            "- Level 1: report top level actions (dictation started, suspended .. etc).\n"
+            "- Level 2: report internal details (may be noisy)."
+        ),
         required=False,
     )
 

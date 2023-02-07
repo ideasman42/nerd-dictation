@@ -213,7 +213,7 @@ usage::
                             [--numbers-no-suffix] [--input INPUT_METHOD]
                             [--output OUTPUT_METHOD]
                             [--simulate-input-tool SIMULATE_INPUT_TOOL]
-                            [- ...]
+                            [--verbose VERBOSE] [- ...]
 
 This creates the directory used to store internal data, so other commands such as sync can be performed.
 
@@ -282,6 +282,10 @@ options:
                         - ``YDOTOOL`` Compatible with all Linux distributions and Wayland but requires some setup.
                         - ``WTYPE`` Compatible with Wayland.
                           For help on setting up ydotool, see ``readme-ydotool.rst`` in the nerd-dictation repository.
+  --verbose VERBOSE     Verbosity level, defaults to zero (no output except for errors)
+
+                        - Level 1: report top level actions (dictation started, suspended .. etc).
+                        - Level 2: report internal details (may be noisy).
   ``-`` ...             End argument parsing.
                         This can be used for user defined arguments which configuration scripts may read from the ``sys.argv``.
 
