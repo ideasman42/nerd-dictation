@@ -942,8 +942,8 @@ def text_from_vosk_pipe(
     if not vosk_grammar_file:
         grammar_json = ""
     else:
-        with open(vosk_grammar_file) as x:
-            grammar_json = x.read()
+        with open(vosk_grammar_file, encoding="utf-8") as fh:
+            grammar_json = fh.read()
 
     # Allow for loading the model to take some time:
     if verbose >= 1:
