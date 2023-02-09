@@ -201,7 +201,7 @@ Subcommand: ``begin``
 usage::
 
        nerd-dictation begin [-h] [--cookie FILE_PATH] [--config FILE]
-                            [--vosk-model-dir DIR]
+                            [--vosk-model-dir DIR] [--vosk-grammar-file DIR]
                             [--pulse-device-name IDENTIFIER]
                             [--sample-rate HZ] [--defer-output] [--continuous]
                             [--timeout SECONDS] [--idle-time SECONDS]
@@ -223,6 +223,10 @@ options:
   --config FILE         Override the file used for the user configuration.
                         Use an empty string to prevent the users configuration being read.
   --vosk-model-dir DIR  Path to the VOSK model, see: https://alphacephei.com/vosk/models
+  --vosk-grammar-file DIR
+                        Path to a JSON grammar file.  This restricts the phrases recognized by VOSK for
+                        better accuracy.  See `vosk_recognizer_new_grm` in the API reference:
+                        https://github.com/alphacep/vosk-api/blob/master/src/vosk_api.h
   --pulse-device-name IDENTIFIER
                         The name of the pulse-audio device to use for recording.
                         See the output of "pactl list sources" to find device names (using the identifier following "Name:").

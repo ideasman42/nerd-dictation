@@ -1522,7 +1522,7 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         help=(
             "Path to a JSON grammar file.  This restricts the phrases recognized by VOSK for\n"
             "better accuracy.  See `vosk_recognizer_new_grm` in the API reference:\n"
-            "  https://github.com/alphacep/vosk-api/blob/master/src/vosk_api.h"
+            "https://github.com/alphacep/vosk-api/blob/master/src/vosk_api.h"
         ),
         required=False,
     )
