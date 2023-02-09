@@ -944,21 +944,29 @@ def text_from_vosk_pipe(
 
     vosk.SetLogLevel(-1)
 
-    if not vosk_grammar_file:
-        grammar_json = ""
-    else:
-        with open(vosk_grammar_file, encoding="utf-8") as fh:
-            grammar_json = fh.read()
-
     # Allow for loading the model to take some time:
     if verbose >= 1:
         sys.stderr.write("Loading model...\n")
     model = vosk.Model(vosk_model_dir)
 
-    if grammar_json == "":
-        rec = vosk.KaldiRecognizer(model, sample_rate)
-    else:
-        rec = vosk.KaldiRecognizer(model, sample_rate, grammar_json)
+    rec = None
+
+    def vosk_load_recognizer() -> None:
+        nonlocal vosk_grammar_file
+        nonlocal rec
+
+        if not vosk_grammar_file:
+            grammar_json = ""
+        else:
+            with open(vosk_grammar_file, encoding="utf-8") as fh:
+                grammar_json = fh.read()
+
+        if grammar_json == "":
+            rec = vosk.KaldiRecognizer(model, sample_rate)
+        else:
+            rec = vosk.KaldiRecognizer(model, sample_rate, grammar_json)
+
+    vosk_load_recognizer()
 
     if verbose >= 1:
         sys.stderr.write("Model loaded.\n")
@@ -1135,6 +1143,7 @@ def text_from_vosk_pipe(
         if verbose >= 1:
             sys.stderr.write("Reload.\n")
         process_fn("")
+        vosk_load_recognizer()
 
     import signal
 
