@@ -300,7 +300,8 @@ def calc_user_config_path(rest: Optional[str]) -> str:
 
 
 def user_config_as_module_or_none(
-    config_override: Optional[str], prev_user_config: Optional[ModuleType]
+    config_override: Optional[str],
+    user_config_prev: Optional[ModuleType],
 ) -> Optional[ModuleType]:
 
     # Explicitly ask for no configuration.
@@ -318,13 +319,13 @@ def user_config_as_module_or_none(
         user_config = execfile(user_config_path)
     except Exception as ex:
         sys.stderr.write('Failed to run "{:s}" with error: {:s}\n'.format(user_config_path, str(ex)))
-        if not prev_user_config:
-            # Exit only if this is the first time the config is loaded
-            sys.exit(1)
-        else:
-            # The user has been warned about their syntax error, so keep the current config
+        if user_config_prev is not None:
+            # Reloading configuration at run-time, don't exit in this case - use the previous config instead.
             sys.stderr.write("Reload failed, continuing with previous configuration.\n")
-            user_config = prev_user_config
+            user_config = user_config_prev
+        else:
+            # Exit if the user starts with an invalid configuration.
+            sys.exit(1)
 
     return user_config
 
@@ -1305,7 +1306,7 @@ def main_begin(
         # text=="" indicates that user_config should be reloaded (SIGHUP)
         #
         if process_fn_is_first or text == "":
-            user_config = user_config_as_module_or_none(config_override=config_override, prev_user_config=user_config)
+            user_config = user_config_as_module_or_none(config_override=config_override, user_config_prev=user_config)
 
         if not text:
             return ""
