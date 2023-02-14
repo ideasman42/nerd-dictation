@@ -215,9 +215,11 @@ def simulate_typing_with_ydotool(delete_prev_chars: int, text: str) -> None:
 simulate_typing_with_dotool_proc: "Optional[subprocess.Popen[str]]" = None
 
 
-def simulate_typing_with_dotool(delete_prev_chars: int, text: str) -> None:
-    cmd = "dotool"
+def simulate_typing_with_dotoolc(delete_prev_chars: int, text: str) -> None:
+    simulate_typing_with_dotool(delete_prev_chars, text, cmd="dotoolc")
 
+
+def simulate_typing_with_dotool(delete_prev_chars: int, text: str, cmd: str = "dotool") -> None:
     if delete_prev_chars == SIMULATE_INPUT_CODE_COMMAND:
         global simulate_typing_with_dotool_proc
         if text == "SETUP":
@@ -1367,6 +1369,8 @@ def main_begin(
             handle_fn = simulate_typing_with_ydotool
         elif simulate_input_tool == "DOTOOL":
             handle_fn = simulate_typing_with_dotool
+        elif simulate_input_tool == "DOTOOLC":
+            handle_fn = simulate_typing_with_dotoolc
         elif simulate_input_tool == "WTYPE":
             handle_fn = simulate_typing_with_wtype
         else:
@@ -1743,13 +1747,14 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         "--simulate-input-tool",
         dest="simulate_input_tool",
         default="XDOTOOL",
-        choices=("XDOTOOL", "DOTOOL", "YDOTOOL", "WTYPE"),
+        choices=("XDOTOOL", "DOTOOL", "DOTOOLC", "YDOTOOL", "WTYPE"),
         metavar="SIMULATE_INPUT_TOOL",
         help=(
             "Program used to simulate keystrokes (default).\n"
             "\n"
             "- ``XDOTOOL`` Compatible with the X server only (default).\n"
             "- ``DOTOOL`` Compatible with all Linux distributions and Wayland.\n"
+            "- ``DOTOOLC`` Same as DOTOOL but for use with the `dotoold` daemon.\n"
             "- ``YDOTOOL`` Compatible with all Linux distributions and Wayland but requires some setup.\n"
             "- ``WTYPE`` Compatible with Wayland.\n"
             "  For help on setting up ydotool, see ``readme-ydotool.rst`` in the nerd-dictation repository.\n"
