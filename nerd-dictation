@@ -223,7 +223,10 @@ def simulate_typing_with_dotool(delete_prev_chars: int, text: str) -> None:
         if text == "SETUP":
             # If this isn't true, something strange is going on.
             assert simulate_typing_with_dotool_proc is None
-            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, text=True)
+            # "text" was added as a more readable alias for
+            # "universal_newlines" in Python 3.7 so use universal_newlines for
+            # Python 3.6 compatibility:
+            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, universal_newlines=True)
             assert proc.stdin is not None
             proc.stdin.write("keydelay 4\ntypedelay 12\n")
             proc.stdin.flush()
