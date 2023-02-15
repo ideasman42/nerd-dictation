@@ -1077,6 +1077,8 @@ def text_from_vosk_pipe(
     from types import FrameType
 
     def do_suspend_pause() -> None:
+        nonlocal ps
+        nonlocal stdout
         rec_handle_fn_wrapper_from_final_result()
 
         # Don't include any of the current analysis when resuming.
@@ -1090,8 +1092,11 @@ def text_from_vosk_pipe(
             sys.stderr.write("Recording suspended.\n")
 
         # Close the recording process.
+        stdout.close()
         os.kill(ps.pid, signal.SIGINT)
 
+    # Warning: do not call do_suspend_resume() from a signal context because it
+    # can cause reentrant runtime errors and other related bugs.
     def do_suspend_resume() -> None:
         nonlocal ps
         nonlocal stdout
@@ -1118,7 +1123,6 @@ def text_from_vosk_pipe(
         if not suspend:
             return
         suspend = False
-        do_suspend_resume()
 
     def handle_sig_reload_from_hup(_signum: int, _frame: Optional[FrameType]) -> None:
         if verbose >= 1:
@@ -1175,7 +1179,16 @@ def text_from_vosk_pipe(
 
         # Mostly the data read is quite small (under 1k).
         # Only the 1st entry in the loop reads a lot of data due to the time it takes to initialize the VOSK module.
-        data = stdout.read(block_size)
+        try:
+            data = stdout.read(block_size)
+        except (NameError, ValueError):
+            # Start recording if `stdout` is not yet open (NameError), or if it
+            # was closed via suspend (ValueError).  This can happen either due
+            # to a suspend/resume cycle (SIGUSR1/SIGTSTP->SIGCONT) or when
+            # --suspend-on-start was specified followed by a SIGCONT.
+            do_suspend_resume()
+            continue
+
         if data:
             ok = rec.AcceptWaveform(data)
             if ok:
