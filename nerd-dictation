@@ -1135,7 +1135,6 @@ def text_from_vosk_pipe(
         if verbose >= 1:
             sys.stderr.write("Reload.\n")
         process_fn("")
-        return
 
     import signal
 
