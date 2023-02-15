@@ -1037,6 +1037,8 @@ def text_from_vosk_pipe(
 
     def rec_handle_fn_wrapper_from_final_result() -> str:
         json_text = rec.FinalResult()
+        if not json_text:
+            return ""
         assert isinstance(json_text, str)
         json_data = json.loads(json_text)
         text = json_data["text"]
