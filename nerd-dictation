@@ -1042,6 +1042,13 @@ def text_from_vosk_pipe(
 
     def rec_handle_fn_wrapper_from_final_result() -> str:
         json_text = rec.FinalResult()
+
+        # When `rec.FinalResult()` returns an empty string, typically immediately after a resume,
+        # it can cause the JSON decoder to fail. This patch simply ignores that case and continues
+        # by returning an empty string to the caller.
+        if not json_text:
+            return ""
+
         assert isinstance(json_text, str)
         json_data = json.loads(json_text)
         text = json_data["text"]
