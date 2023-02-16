@@ -26,7 +26,7 @@
 #    Rule: I_LOWERCASE
 #
 # nerd-dictation was invoked as follows:
-#    ./nerd-dictation begin --config examples/language-tool/nerd-dictation.py
+#    ./nerd-dictation begin --config ./examples/language_tool/nerd-dictation.py
 #
 # I used the Vosk model vosk-model-en-us-0.22-lgraph, but it probably does not
 # matter which model you use.
@@ -87,7 +87,7 @@ def langtool(text, language):
     new_len = 0
     for m in r.json()["matches"]:
         # len(text) can change while iterating due to additions or deletions,
-        # which breaks the offset.  Adjust the offset if length changes:
+        # which breaks the offset. Adjust the offset if length changes:
         if new_len:
             adj = new_len - orig_len
         else:

@@ -8,13 +8,13 @@
 # This is the command that I used to invoke nerd-dictation for development and
 # testing of the grammar code and this example:
 #
-#  ./nerd-dictation begin \
+#  ./nerd-dictation begin   \
 #      --continuous         \
 #      --numbers-as-digits  \
 #      --numbers-no-suffix  \
-#      --vosk-model-dir     ~/.config/nerd-dictation/vosk-model-en-us-0.22-lgraph/  \
-#      --vosk-grammar-file  examples/vosk-grammar/vosk-grammar.json                 \
-#      --config             examples/vosk-grammar/nerd-dictation.py
+#      --vosk-model-dir     ~/.config/nerd-dictation/vosk-model-en-us-0.22-lgraph/ \
+#      --vosk-grammar-file  ./examples/vosk_grammar/vosk-grammar.json              \
+#      --config             ./examples/vosk_grammar/nerd-dictation.py
 #
 # = Notes about the files indicated above
 #
@@ -25,7 +25,7 @@
 #     quite well.  (https://alphacephei.com/nsh/2020/03/27/lookahead.html)
 #
 #
-# --vosk-grammar-file examples/vosk-grammar/vosk-grammar.json
+# --vosk-grammar-file ./examples/vosk_grammar/vosk-grammar.json
 #
 #     The JSON file provided to Vosk is literal next. No python code can be
 #     included their comment it is passed directly to the engine which was
