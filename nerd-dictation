@@ -967,6 +967,7 @@ def text_from_vosk_pipe(
             rec = vosk.KaldiRecognizer(model, sample_rate, grammar_json)
 
     vosk_load_recognizer()
+    assert rec is not None
 
     if verbose >= 1:
         sys.stderr.write("Model loaded.\n")
@@ -1049,6 +1050,7 @@ def text_from_vosk_pipe(
     # Utilities for accessing results on `rec` (VOSK)
 
     def rec_handle_fn_wrapper_from_final_result() -> str:
+        assert rec is not None
         json_text = rec.FinalResult()
 
         # When `rec.FinalResult()` returns an empty string, typically immediately after a resume,
@@ -1066,6 +1068,7 @@ def text_from_vosk_pipe(
         return json_text
 
     def rec_handle_fn_wrapper_from_partial_result(json_text_partial_prev: str) -> Tuple[str, str]:
+        assert rec is not None
         json_text = rec.PartialResult()
         # Without this, there are *many* calls with the same partial text.
         if json_text_partial_prev != json_text:
@@ -1097,6 +1100,7 @@ def text_from_vosk_pipe(
         rec_handle_fn_wrapper_from_final_result()
 
         # Don't include any of the current analysis when resuming.
+        assert rec is not None
         rec.Reset()
 
         # Clear the buffer:
