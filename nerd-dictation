@@ -1041,7 +1041,11 @@ def text_from_vosk_pipe(
     # Utilities for accessing results on `rec` (VOSK)
 
     def rec_handle_fn_wrapper_from_final_result() -> str:
-        json_text = rec.FinalResult()
+        try:
+            json_text = rec.FinalResult()
+        except UnicodeDecodeError as e:
+            sys.stderr.write("Warning: ignoring Vosk error: " + format(e) + "\n")
+            return ""
 
         # When `rec.FinalResult()` returns an empty string, typically immediately after a resume,
         # it can cause the JSON decoder to fail. This patch simply ignores that case and continues
