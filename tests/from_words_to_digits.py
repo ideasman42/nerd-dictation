@@ -114,6 +114,26 @@ class TestNumberSeries(unittest.TestCase, NumberMixIn):
         self.assertNumberFromTextEqual("one nineteen two fourteen three zero", "11921430")
         self.assertNumberFromTextEqual("zero twenty", "020")
 
+    def test_multiple(self):
+        self.assertNumberFromTextEqual(
+            "twenty twenty and twenty twenty one",
+            "2020 and 2021",
+        )
+        self.assertNumberFromTextEqual(
+            "twenty twenty and twenty twenty one and twenty twenty two",
+            "2020 and 2021 and 2022",
+        )
+
+    def test_multiple_complex(self):
+        self.assertNumberFromTextEqual(
+            "one hundred and two and three hundred and four",
+            "102 and 304",
+        )
+        self.assertNumberFromTextEqual(
+            "two thousand three hundred and four and five hundred and six and seven",
+            "2,304 and 506 and 7",
+        )
+
 
 class TestNumberWhole(unittest.TestCase, NumberMixIn):
     def test_one(self):

@@ -618,12 +618,15 @@ class from_words_to_digits:
                         i_span_beg,  # Split start.
                         force_single_units=True,
                     )
-                    assert result_test[2] == i
-
-                    if result_prev:
-                        if len(result_prev[0]) == len(result_test[0]):
-                            return result_prev[2]
-
+                    # NOTE: in *almost* all cases this assertion is valid.
+                    # `assert i == result_test[2]`.
+                    # However these may not be equal if there are multiple disconnected series.
+                    # e.g. `twenty twenty and twenty twenty one` -> `2020 and 2021`, see: #92.
+                    assert i >= result_test[2]
+                    if result_test[2] == i:
+                        if result_prev:
+                            if len(result_prev[0]) == len(result_test[0]):
+                                return result_prev[2]
                     i_span_beg = i
                 w_prev = w
             i += 1
