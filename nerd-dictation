@@ -308,7 +308,6 @@ def user_config_as_module_or_none(
     config_override: Optional[str],
     user_config_prev: Optional[ModuleType],
 ) -> Optional[ModuleType]:
-
     # Explicitly ask for no configuration.
     if config_override == "":
         return None
@@ -341,10 +340,9 @@ def user_config_as_module_or_none(
 # Note this could be extracted into it's own small library.
 
 
-def from_words_to_digits_setup_once() -> Tuple[
-    Dict[str, Tuple[int, int, str, bool]], Set[str], Set[str], Set[str], Set[str]
-]:
-
+def from_words_to_digits_setup_once() -> (
+    Tuple[Dict[str, Tuple[int, int, str, bool]], Set[str], Set[str], Set[str], Set[str]]
+):
     number_words = {}
     # A set of words that can be used to start numeric expressions.
     valid_digit_words: Set[str] = set()
@@ -457,7 +455,6 @@ def from_words_to_digits_setup_once() -> Tuple[
 # Originally based on: https://ao.gl/how-to-convert-numeric-words-into-numbers-using-python/
 # A module like class can't be instanced.
 class from_words_to_digits:
-
     (
         _number_words,
         valid_digit_words,
@@ -591,7 +588,6 @@ class from_words_to_digits:
         word_index: int,
         word_index_len: int,
     ) -> int:
-
         valid_unit_words = from_words_to_digits.valid_unit_words
         number_words = from_words_to_digits._number_words
 
@@ -651,7 +647,6 @@ class from_words_to_digits:
         word_index: int,
         word_index_len: int,
     ) -> int:
-
         valid_unit_words = from_words_to_digits.valid_unit_words
         number_words = from_words_to_digits._number_words
         i = word_index
@@ -693,7 +688,6 @@ class from_words_to_digits:
         word_index: int,
         imply_single_unit: bool = False,
     ) -> Tuple[str, str, int, bool]:
-
         word_list_len = len(word_list)
 
         # Delimit, prevent accumulating "one hundred two hundred" -> "300" for example.
@@ -796,7 +790,6 @@ class from_words_to_digits:
 
 
 def process_text_with_user_config(user_config: ModuleType, text: str) -> str:
-
     process_fn_name = "nerd_dictation_process"
     process_fn = getattr(user_config, process_fn_name)
     if process_fn is None:
@@ -1330,7 +1323,6 @@ def main_begin(
         if not os.path.exists(path_to_cookie):
             return -1  # Cancel.
         if file_mtime_or_none(path_to_cookie) != cookie_timestamp:
-
             # Only delay exit if some text has been handled,
             # this prevents accidental tapping of push to talk from running.
             if handled_any:
@@ -1396,7 +1388,6 @@ def main_begin(
     # Handled the resulting text
     #
     if output == "SIMULATE_INPUT":
-
         if simulate_input_tool == "XDOTOOL":
             handle_fn = simulate_typing_with_xdotool
         elif simulate_input_tool == "YDOTOOL":
