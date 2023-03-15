@@ -939,8 +939,10 @@ def text_from_vosk_pipe(
     def recording_proc_start() -> "Tuple[subprocess.Popen[bytes], IO[bytes]]":
         return recording_proc_with_non_blocking_stdout(input_method, sample_rate, pulse_device_name)
 
+    has_ps = False
     if not suspend_on_start:
         ps, stdout = recording_proc_start()
+        has_ps = True
 
     # `mypy` doesn't know about VOSK.
     import vosk  # type: ignore
@@ -1073,8 +1075,9 @@ def text_from_vosk_pipe(
                 handle_fn_wrapper(text, True)
         return json_text, json_text_partial_prev
 
-    # Support setting up input simulation state.
-    handle_fn(SIMULATE_INPUT_CODE_COMMAND, "SETUP")
+    if not suspend_on_start:
+        # Support setting up input simulation state.
+        handle_fn(SIMULATE_INPUT_CODE_COMMAND, "SETUP")
 
     # Use code to delay exiting, allowing reading the recording buffer to catch-up.
     code = 0
@@ -1087,8 +1090,7 @@ def text_from_vosk_pipe(
     from types import FrameType
 
     def do_suspend_pause() -> None:
-        nonlocal ps
-        nonlocal stdout
+        nonlocal has_ps, ps, stdout
         rec_handle_fn_wrapper_from_final_result()
 
         # Don't include any of the current analysis when resuming.
@@ -1102,21 +1104,28 @@ def text_from_vosk_pipe(
             sys.stderr.write("Recording suspended.\n")
 
         # Close the recording process.
-        stdout.close()
-        os.kill(ps.pid, signal.SIGINT)
+        if has_ps:
+            # Support setting up input simulation state.
+            handle_fn(SIMULATE_INPUT_CODE_COMMAND, "TEARDOWN")
+
+            stdout.close()
+            os.kill(ps.pid, signal.SIGINT)
+            del stdout, ps
+            has_ps = False
 
     # Warning: do not call do_suspend_resume() from a signal context because it
     # can cause reentrant runtime errors and other related bugs.
     def do_suspend_resume() -> None:
-        nonlocal ps
-        nonlocal stdout
+        nonlocal has_ps, ps, stdout
 
         # Resume reading from the recording process.
         nonlocal verbose
         if verbose >= 1:
             sys.stderr.write("Recording.\n")
 
+        handle_fn(SIMULATE_INPUT_CODE_COMMAND, "SETUP")
         ps, stdout = recording_proc_start()
+        has_ps = True
 
     def handle_sig_suspend_from_usr1(_signum: int, _frame: Optional[FrameType]) -> None:
         nonlocal suspend
@@ -1217,11 +1226,14 @@ def text_from_vosk_pipe(
                         code = 1  # The time was exceeded, exit!
 
     # Close the recording process.
-    if not suspend:
+    if has_ps:
+        # stdout.close(), no need, this is exiting.
         os.kill(ps.pid, signal.SIGINT)
+        del ps, stdout
+        has_ps = False
 
-    # Support setting up input simulation state.
-    handle_fn(SIMULATE_INPUT_CODE_COMMAND, "TEARDOWN")
+        # Support setting up input simulation state.
+        handle_fn(SIMULATE_INPUT_CODE_COMMAND, "TEARDOWN")
 
     if code == -1:
         sys.stderr.write("Text input canceled!\n")
