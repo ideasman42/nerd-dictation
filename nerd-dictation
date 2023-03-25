@@ -230,7 +230,7 @@ def simulate_typing_with_dotool(delete_prev_chars: int, text: str, cmd: str = "d
             # Python 3.6 compatibility:
             proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, universal_newlines=True)
             assert proc.stdin is not None
-            proc.stdin.write("keydelay 4\ntypedelay 12\n")
+            proc.stdin.write("keydelay 4\nkeyhold 0\ntypedelay 12\ntypehold 0\n")
             proc.stdin.flush()
             simulate_typing_with_dotool_proc = proc
         elif text == "TEARDOWN":
