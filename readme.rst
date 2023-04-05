@@ -283,6 +283,7 @@ options:
 
                         - ``XDOTOOL`` Compatible with the X server only (default).
                         - ``DOTOOL`` Compatible with all Linux distributions and Wayland.
+                        - ``DOTOOLC`` Same as DOTOOL but for use with the `dotoold` daemon.
                         - ``YDOTOOL`` Compatible with all Linux distributions and Wayland but requires some setup.
                         - ``WTYPE`` Compatible with Wayland.
                           For help on setting up ydotool, see ``readme-ydotool.rst`` in the nerd-dictation repository.
