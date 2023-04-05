@@ -1644,7 +1644,7 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         type=float,
         metavar="SECONDS",
         help=(
-            "The time to continue running after an exit request.\n"
+            "The time to continue running after an end request.\n"
             'this can be useful so "push to talk" setups can be released while you finish speaking\n'
             "(zero disables)."
         ),
