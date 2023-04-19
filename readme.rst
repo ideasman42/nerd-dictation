@@ -286,6 +286,7 @@ options:
                         - ``DOTOOLC`` Same as DOTOOL but for use with the `dotoold` daemon.
                         - ``YDOTOOL`` Compatible with all Linux distributions and Wayland but requires some setup.
                         - ``WTYPE`` Compatible with Wayland.
+                        - ``STDOUT`` Bare stdout with Ctrl-H for backspaces.
                           For help on setting up ydotool, see ``readme-ydotool.rst`` in the nerd-dictation repository.
   --verbose VERBOSE     Verbosity level, defaults to zero (no output except for errors)
 
