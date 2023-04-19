@@ -829,7 +829,7 @@ def process_text(
     full_sentence: bool = False,
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
-    numbers_min_value: Optional[float] = None,
+    numbers_min_value: Optional[int] = None,
     numbers_no_suffix: bool = False,
 ) -> str:
     """
@@ -1268,7 +1268,7 @@ def main_begin(
     full_sentence: bool = False,
     numbers_as_digits: bool = False,
     numbers_use_separator: bool = False,
-    numbers_min_value: Optional[float] = None,
+    numbers_min_value: Optional[int] = None,
     numbers_no_suffix: bool = False,
     timeout: float = 0.0,
     idle_time: float = 0.0,
