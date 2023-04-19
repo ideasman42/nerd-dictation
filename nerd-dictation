@@ -293,7 +293,7 @@ def simulate_typing_with_stout(delete_prev_chars: int, text: str) -> None:
         return
 
     if delete_prev_chars:
-        sys.stdout.write("\x08"*delete_prev_chars)
+        sys.stdout.write("\x08" * delete_prev_chars)
 
     sys.stdout.write(text)
     sys.stdout.flush()
@@ -1798,7 +1798,7 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
             "- ``DOTOOLC`` Same as DOTOOL but for use with the `dotoold` daemon.\n"
             "- ``YDOTOOL`` Compatible with all Linux distributions and Wayland but requires some setup.\n"
             "- ``WTYPE`` Compatible with Wayland.\n"
-            "- ``STDOUT`` Bare stdout with # for backspaces.\n"
+            "- ``STDOUT`` Bare stdout with Ctrl-H for backspaces.\n"
             "  For help on setting up ydotool, see ``readme-ydotool.rst`` in the nerd-dictation repository.\n"
         ),
         required=False,
