@@ -55,7 +55,7 @@ def run_command_or_exit_on_failure(cmd: List[str]) -> None:
         sys.exit(1)
 
 
-def touch(filepath: str, mtime: Optional[float] = None) -> None:
+def touch(filepath: str, mtime: Optional[int] = None) -> None:
     if os.path.exists(filepath):
         os.utime(filepath, None if mtime is None else (mtime, mtime))
     else:
@@ -68,9 +68,10 @@ def touch(filepath: str, mtime: Optional[float] = None) -> None:
                 pass
 
 
-def file_mtime_or_none(filepath: str) -> Optional[float]:
+def file_mtime_or_none(filepath: str) -> Optional[int]:
     try:
-        return os.stat(filepath)[stat.ST_MTIME]
+        # For some reason `mypy` thinks this is a float.
+        return int(os.stat(filepath)[stat.ST_MTIME])
     except FileNotFoundError:
         return None
 
