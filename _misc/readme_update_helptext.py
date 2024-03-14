@@ -9,7 +9,7 @@ BASE_DIR = os.path.join(os.path.dirname(__file__), "..")
 COMMAND_NAME = "nerd-dictation"
 
 
-def patch_help_test_all(help_output):
+def patch_help_text_all(help_output):
     help_output = help_output.replace(
         "usage: " + COMMAND_NAME,
         "usage::\n"
@@ -19,7 +19,7 @@ def patch_help_test_all(help_output):
     return help_output
 
 
-def patch_help_test_main(help_output, sub_commands):
+def patch_help_text_main(help_output, sub_commands):
     help_output = help_output.replace('{' + ','.join(sub_commands) + '}', '')
     help_output = re.sub(r"[ \t]+(\n|\Z)", r"\1", help_output)
 
@@ -28,7 +28,7 @@ def patch_help_test_main(help_output, sub_commands):
     return help_output
 
 
-def patch_help_test_for_begin(help_output):
+def patch_help_text_for_begin(help_output):
     # Needed so the '-' argument is not interpreted as a dot-point.
     help_output = help_output.replace(
         " - ...     ",
@@ -83,10 +83,10 @@ def main():
     # strip trailing space
     for i in range(len(help_output)):
         help_output[i] = re.sub(r"[ \t]+(\n|\Z)", r"\1", help_output[i])
-        help_output[i] = patch_help_test_all(help_output[i])
+        help_output[i] = patch_help_text_all(help_output[i])
 
-    help_output[0] = patch_help_test_main(help_output[0], sub_commands)
-    help_output[1] = patch_help_test_for_begin(help_output[1])
+    help_output[0] = patch_help_text_main(help_output[0], sub_commands)
+    help_output[1] = patch_help_text_for_begin(help_output[1])
 
     help_output[0] = (
         "\nOutput of ``" + COMMAND_NAME + " --help``\n\n" +
