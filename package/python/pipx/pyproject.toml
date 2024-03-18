@@ -1,0 +1,33 @@
+[build-system]
+requires = [ "setuptools>=61.2" ]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nerd-dictation"
+version = "0.0.1"
+authors = [ { name = "Campbell Barton", email = "ideasman42@gmail.com" } ]
+description = "Offline Speech to Text for Desktop"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GPL v3.0",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Office :: Productivity",
+    "Topic :: Accessibility :: Voice",
+]
+requires-python = ">=3.6"
+dependencies = [ "vosk>= 0.3.45" ]
+
+[project.readme]
+file = "readme.rst"
+content-type = "text/x-rst"
+
+[project.urls]
+Homepage = "https://github.com/ideasman42/nerd-dictation"
+
+[tool.setuptools]
+script-files = [ "nerd-dictation" ]
+include-package-data = false
+
+[tool.black]
+line-length = 119
+target-version = ['py310']
