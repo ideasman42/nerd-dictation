@@ -11,6 +11,7 @@ While it could use any system currently it uses the VOSK-API.
 # All built in modules.
 import argparse
 import os
+import psutil
 import stat
 import subprocess
 import sys
@@ -1257,6 +1258,23 @@ def text_from_vosk_pipe(
 
     return handled_any
 
+def is_process_interactive(pid: os.getpid) -> bool:
+    '''
+    Verify whether the process is prompting for text.
+    '''
+
+    try:
+        process = psutil.Process(pid)
+
+        for fd in process.open_files() + process.connections():
+            if fd.fd == '0':
+                return True;
+
+        return False;
+    
+    except (psutil.NoSuchProcess, psutil.AccessDenied, 
+        psutil.ZombieProcess):
+        return False;
 
 def main_begin(
     *,
@@ -1313,8 +1331,10 @@ def main_begin(
         del age_in_seconds
 
     # Write the PID, needed for suspend/resume sub-commands to know the PID of the current process.
+    pid = os.getpid()
     with open(path_to_cookie, "w", encoding="utf-8") as fh:
-        fh.write(str(os.getpid()))
+        if is_process_interactive(pid):
+            fh.write(str(pid))
 
     # Force zero time-stamp so a fast begin/end (tap) action
     # doesn't leave dictation running.
@@ -1972,3 +1992,4 @@ def main(argv: Optional[List[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
+
