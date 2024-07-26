@@ -39,6 +39,13 @@ USER_CONFIG = "nerd-dictation.py"
 
 SIMULATE_INPUT_CODE_COMMAND = -1
 
+try:
+    from pynput.keyboard import Key, Controller  # type: ignore
+    keyboard = Controller()
+    TAP_DELAY = 0.012
+except ImportError:
+    sys.stderr.write("Module 'pynput' is not installed. Defaulting input method to xdotool.")
+
 
 # -----------------------------------------------------------------------------
 # General Utilities
@@ -136,6 +143,26 @@ def execfile(filepath: str, mod: Optional[ModuleType] = None) -> Optional[Module
 
 
 # -----------------------------------------------------------------------------
+# Simulate Input: PYNPUT
+#
+def simulate_typing_with_pynput(delete_prev_chars: int, text: str) -> None:
+
+    # No setup/tear-down.
+    if delete_prev_chars == SIMULATE_INPUT_CODE_COMMAND:
+        return
+
+    if delete_prev_chars:
+        for i in range(delete_prev_chars):
+            keyboard.tap(Key.backspace)
+            time.sleep(TAP_DELAY)
+    else:
+        for c in text:
+            keyboard.type(c)
+            time.sleep(TAP_DELAY)
+
+
+
+# -----------------------------------------------------------------------------
 # Simulate Input: XDOTOOL
 #
 def simulate_typing_with_xdotool(delete_prev_chars: int, text: str) -> None:
@@ -164,6 +191,7 @@ def simulate_typing_with_xdotool(delete_prev_chars: int, text: str) -> None:
             text,
         ]
     )
+
 
 
 # -----------------------------------------------------------------------------
@@ -1404,7 +1432,9 @@ def main_begin(
     # Handled the resulting text
     #
     if output == "SIMULATE_INPUT":
-        if simulate_input_tool == "XDOTOOL":
+        if simulate_input_tool == "PYNPUT":
+            handle_fn = simulate_typing_with_pynput
+        elif simulate_input_tool == "XDOTOOL":
             handle_fn = simulate_typing_with_xdotool
         elif simulate_input_tool == "YDOTOOL":
             handle_fn = simulate_typing_with_ydotool
@@ -1790,11 +1820,12 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         "--simulate-input-tool",
         dest="simulate_input_tool",
         default="XDOTOOL",
-        choices=("XDOTOOL", "DOTOOL", "DOTOOLC", "YDOTOOL", "WTYPE", "STDOUT"),
+        choices=("PYNPUT", "XDOTOOL", "DOTOOL", "DOTOOLC", "YDOTOOL", "WTYPE", "STDOUT"),
         metavar="SIMULATE_INPUT_TOOL",
         help=(
             "Program used to simulate keystrokes (default).\n"
             "\n"
+            "- ``PYNPUT`` Compatible with all Linux distributions and Wayland.\n"
             "- ``XDOTOOL`` Compatible with the X server only (default).\n"
             "- ``DOTOOL`` Compatible with all Linux distributions and Wayland.\n"
             "- ``DOTOOLC`` Same as DOTOOL but for use with the `dotoold` daemon.\n"
