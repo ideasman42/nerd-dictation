@@ -41,6 +41,7 @@ SIMULATE_INPUT_CODE_COMMAND = -1
 
 try:
     from pynput.keyboard import Key, Controller  # type: ignore
+
     keyboard = Controller()
     TAP_DELAY = 0.012
 except ImportError:
@@ -152,14 +153,13 @@ def simulate_typing_with_pynput(delete_prev_chars: int, text: str) -> None:
         return
 
     if delete_prev_chars:
-        for i in range(delete_prev_chars):
+        for _ in range(delete_prev_chars):
             keyboard.tap(Key.backspace)
             time.sleep(TAP_DELAY)
     else:
         for c in text:
             keyboard.type(c)
             time.sleep(TAP_DELAY)
-
 
 
 # -----------------------------------------------------------------------------
@@ -191,7 +191,6 @@ def simulate_typing_with_xdotool(delete_prev_chars: int, text: str) -> None:
             text,
         ]
     )
-
 
 
 # -----------------------------------------------------------------------------
@@ -776,7 +775,8 @@ class from_words_to_digits:
                         continue
 
                     word_list[i:i_next] = [
-                        ("{:,d}".format(int(number)) if (numbers_use_separator and allow_reformat) else number) + suffix
+                        ("{:,d}".format(int(number)) if (numbers_use_separator and allow_reformat) else number)
+                        + suffix
                     ]
 
                     if (i_number_prev != -1) and (i_number_prev + 1 != i):
