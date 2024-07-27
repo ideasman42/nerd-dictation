@@ -156,10 +156,9 @@ def simulate_typing_with_pynput(delete_prev_chars: int, text: str) -> None:
         for _ in range(delete_prev_chars):
             keyboard.tap(Key.backspace)
             time.sleep(TAP_DELAY)
-    else:
-        for c in text:
-            keyboard.type(c)
-            time.sleep(TAP_DELAY)
+    for c in text:
+        keyboard.type(c)
+        time.sleep(TAP_DELAY)
 
 
 # -----------------------------------------------------------------------------
