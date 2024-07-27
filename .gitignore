@@ -7,3 +7,7 @@ __pycache__/
 
 # Fallback location used for the language model.
 /model
+/venv/
+/package/python
+!/package/python/readme.rst
+!/package/python/setup.py
