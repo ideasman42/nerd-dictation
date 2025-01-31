@@ -84,6 +84,7 @@ You may select one of the following tools.
 
 - ``parec`` command for recording from pulse-audio.
 - ``sox`` command as alternative, see the guide: `Using sox with nerd-dictation <readme-sox.rst>`_.
+- ``pw-cat`` command for recording from pipewire.
 
 
 Input Simulation Utilities
@@ -265,12 +266,13 @@ options:
                         from being turned into "no 1".
   --numbers-no-suffix   Suppress number suffixes when --numbers-as-digits is specified.
                         For example, this will prevent "first" from becoming "1st".
-  --input INPUT_METHOD  Specify input method to be used for audio recording. Valid methods: PAREC, SOX
+  --input INPUT_METHOD  Specify input method to be used for audio recording. Valid methods: PAREC, SOX, PW-CAT.
 
                         - ``PAREC`` (external command, default)
                           See --pulse-device-name option to use a specific pulse-audio device.
                         - ``SOX`` (external command)
                           For help on setting up sox, see ``readme-sox.rst`` in the nerd-dictation repository.
+                        - ``PW-CAT`` (external command)
   --output OUTPUT_METHOD
                         Method used to at put the result of speech to text.
 
