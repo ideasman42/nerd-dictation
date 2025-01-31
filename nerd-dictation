@@ -901,6 +901,16 @@ def recording_proc_with_non_blocking_stdout(
             "-L",
             "-",
         )
+    elif input_method == "PW-CAT":
+        cmd = (
+            "pw-cat",
+            "--record",
+            "--format=s16",
+            "--rate",
+            str(sample_rate),
+            "--channels=1",
+            "-",
+        )
     else:
         sys.stderr.write("--input %r not supported.\n" % input_method)
         sys.exit(1)
@@ -1756,7 +1766,7 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         default="PAREC",
         type=str,
         metavar="INPUT_METHOD",
-        choices=("PAREC", "SOX"),
+        choices=("PAREC", "SOX", "PW-CAT"),
         help=(
             "Specify input method to be used for audio recording. Valid methods: PAREC, SOX\n"
             "\n"
@@ -1764,6 +1774,7 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
             "  See --pulse-device-name option to use a specific pulse-audio device.\n"
             "- ``SOX`` (external command)\n"
             "  For help on setting up sox, see ``readme-sox.rst`` in the nerd-dictation repository.\n"
+            "- ``PW-CAT`` (external command)\n"
         ),
         required=False,
     )
