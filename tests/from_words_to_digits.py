@@ -11,10 +11,15 @@ Test number to digit conversion.
 import os
 import sys
 
+from types import (
+    ModuleType,
+)
+
+
 # -----------------------------------------------------------------------------
 # General Utilities
 #
-def execfile_as_module(mod_name, filepath):
+def execfile_as_module(mod_name: str, filepath: str) -> ModuleType:
     """
     Execute a file path as a Python script.
 
@@ -51,23 +56,23 @@ def execfile_as_module(mod_name, filepath):
     return mod
 
 
-def name_of_caller(frame=1):
+def name_of_caller(frame_number: int = 1) -> str:
     """
     Return "class_name.function_name" of the caller or just "function_name".
     """
-    frame = sys._getframe(frame)
+    frame = sys._getframe(frame_number)
     fn_name = frame.f_code.co_name
     var_names = frame.f_code.co_varnames
     if var_names:
         if var_names[0] == "self":
             self_obj = frame.f_locals.get("self")
             if self_obj is not None:
-                return type(self_obj).__name__ + "." + fn_name
+                return str(type(self_obj).__name__ + "." + fn_name)
         if var_names[0] == "cls":
             cls_obj = frame.f_locals.get("cls")
             if cls_obj is not None:
-                return cls_obj.__name__ + "." + fn_name
-    return fn_name
+                return str(cls_obj.__name__ + "." + fn_name)
+    return str(fn_name)
 
 
 # -----------------------------------------------------------------------------
@@ -79,42 +84,50 @@ import unittest
 
 
 class NumberMixIn:
-    def assertNumberFromTextEqual(self, words_input, expected_output):
+    def assertNumberFromTextEqual(self, words_input: str, expected_output: str) -> None:
         words = words_input.split()
         nerd_dictation.from_words_to_digits.parse_numbers_in_word_list(
             words,
             numbers_use_separator=True,
         )
-        actual_output = tuple(words)
-        expected_output = tuple(expected_output.split())
+        actual_output_tuple = tuple(words)
+        expected_output_tuple = tuple(expected_output.split())
+        del words, expected_output
         if VERBOSE:
-            print("{:>54}: {!r} -> {!r}".format(name_of_caller(frame=2), words_input, " ".join(actual_output)))
-        self.assertEqual(actual_output, expected_output)
+            print(
+                "{:>54}: {!r} -> {!r}".format(
+                    name_of_caller(frame_number=2),
+                    words_input,
+                    " ".join(actual_output_tuple),
+                )
+            )
+        assert isinstance(self, unittest.TestCase)
+        self.assertEqual(actual_output_tuple, expected_output_tuple)
 
 
 class TestNumberNoop(unittest.TestCase, NumberMixIn):
-    def test_noop(self):
+    def test_noop(self) -> None:
         self.assertNumberFromTextEqual("", "")
 
-    def test_no_number(self):
+    def test_no_number(self) -> None:
         self.assertNumberFromTextEqual("hello world", "hello world")
 
 
 class TestNumberSeries(unittest.TestCase, NumberMixIn):
-    def test_single(self):
+    def test_single(self) -> None:
         self.assertNumberFromTextEqual("one two", "12")
         self.assertNumberFromTextEqual("one two three", "123")
 
-    def test_teens(self):
+    def test_teens(self) -> None:
         self.assertNumberFromTextEqual("thirteen", "13")
         self.assertNumberFromTextEqual("thirteen fourteen", "1314")
         self.assertNumberFromTextEqual("nineteen one two three", "19123")
 
-    def test_mixed(self):
+    def test_mixed(self) -> None:
         self.assertNumberFromTextEqual("one nineteen two fourteen three zero", "11921430")
         self.assertNumberFromTextEqual("zero twenty", "020")
 
-    def test_multiple(self):
+    def test_multiple(self) -> None:
         self.assertNumberFromTextEqual(
             "twenty twenty and twenty twenty one",
             "2020 and 2021",
@@ -124,7 +137,7 @@ class TestNumberSeries(unittest.TestCase, NumberMixIn):
             "2020 and 2021 and 2022",
         )
 
-    def test_multiple_complex(self):
+    def test_multiple_complex(self) -> None:
         self.assertNumberFromTextEqual(
             "one hundred and two and three hundred and four",
             "102 and 304",
@@ -136,16 +149,16 @@ class TestNumberSeries(unittest.TestCase, NumberMixIn):
 
 
 class TestNumberWhole(unittest.TestCase, NumberMixIn):
-    def test_one(self):
+    def test_one(self) -> None:
         self.assertNumberFromTextEqual("one", "1")
 
-    def test_large_number(self):
+    def test_large_number(self) -> None:
         self.assertNumberFromTextEqual(
             "fifty four million two hundred and twelve thousand five hundred and forty seven",
             "54,212,547",
         )
 
-    def test_very_large_number(self):
+    def test_very_large_number(self) -> None:
         self.assertNumberFromTextEqual(
             "fifty four septillion thirteen trillion twelve thousand five hundred and fifty eight million and two",
             "54,000,000,000,013,000,558,012,002",
@@ -159,28 +172,28 @@ class TestNumberWholeAutoDelimit(unittest.TestCase, NumberMixIn):
     Detect when a new number has begun, instead of accumulating.
     """
 
-    def test_zero(self):
+    def test_zero(self) -> None:
         self.assertNumberFromTextEqual("two hundred and zero", "200 and 0")
         self.assertNumberFromTextEqual("two hundred and zero and one", "200 and 0 and 1")
 
-    def test_hundreds(self):
+    def test_hundreds(self) -> None:
         self.assertNumberFromTextEqual("one hundred two hundred", "100 200")
         self.assertNumberFromTextEqual("one hundred two hundred three hundred", "100 200 300")
 
-    def test_hundreds_and_units(self):
+    def test_hundreds_and_units(self) -> None:
         self.assertNumberFromTextEqual("one hundred two hundred and one", "100 201")
         self.assertNumberFromTextEqual("one hundred two hundred three hundred and one", "100 200 301")
 
-    def test_hundreds_complex_1(self):
+    def test_hundreds_complex_1(self) -> None:
         self.assertNumberFromTextEqual("one hundred two hundred thousand and one", "100 200,001")
 
-    def test_hundreds_complex_2(self):
+    def test_hundreds_complex_2(self) -> None:
         self.assertNumberFromTextEqual(
             "one hundred and three two hundred and thirteen thirteen thousand three hundred and two",
             ("103 " "213 " "13,302"),
         )
 
-    def test_hundreds_complex_3(self):
+    def test_hundreds_complex_3(self) -> None:
         self.assertNumberFromTextEqual(
             (
                 "ninety two "
@@ -192,7 +205,7 @@ class TestNumberWholeAutoDelimit(unittest.TestCase, NumberMixIn):
             ("92 " "303 " "213 " "13,300 " "400"),
         )
 
-    def test_mixed_complex_pairs_1(self):
+    def test_mixed_complex_pairs_1(self) -> None:
         self.assertNumberFromTextEqual(
             (
                 "fifteen million and two "
@@ -202,16 +215,16 @@ class TestNumberWholeAutoDelimit(unittest.TestCase, NumberMixIn):
             ("15,000,002 " "7,403 " "5,000,033"),
         )
 
-    def test_mixed_complex_pairs_2(self):
+    def test_mixed_complex_pairs_2(self) -> None:
         self.assertNumberFromTextEqual(
             ("sixty hundred " "fifty thousand"),
             ("6,000 " "50,000"),
         )
 
-    def test_teen_pairs_1(self):
+    def test_teen_pairs_1(self) -> None:
         self.assertNumberFromTextEqual("nineteen thousand three thousand", "19,000 3,000")
 
-    def test_teen_pairs_2(self):
+    def test_teen_pairs_2(self) -> None:
         self.assertNumberFromTextEqual("twenty thousand three thousand", "20,000 3,000")
 
 
