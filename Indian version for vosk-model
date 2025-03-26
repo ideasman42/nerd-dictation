@@ -1,0 +1,15 @@
+Use this to install indian version of vosk model from alphacephei.com
+This model is of 1 GB size only for the high-accuracy transcription on the server. 
+This indian version of vosl model can require up to 16Gb in memory since they apply advanced AI algorithms.
+Ideally you run them on some high-end servers like i7 or latest AMD Ryzen.
+.
+.
+.
+pip3 install vosk
+git clone https://github.com/prajwalandanur/offline-speech-to-text-.git
+cd nerd-dictation
+wget https://alphacephei.com/kaldi/models/vosk-model-en-in-0.5.zip
+unzip vosk-model-en-in-0.5.zip
+mv vosk-model-en-in-0.5 model
+
+
