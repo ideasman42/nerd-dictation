@@ -1,3 +1,8 @@
+# This GUI app requires an image called icon.png to be used as the icon for the app
+# so make sure to have one in the same folder as this file, or it will crash.
+# If you don't really care, you can just comment out all references to icons
+# Also, it is recommended to turn this file into an executable using pyinstaller, as it makes the whole experience much smoother
+
 import tkinter as tk
 from tkinter import messagebox
 import subprocess
