@@ -43,6 +43,28 @@ Multi-Engine Support
     Support for multiple speech recognition engines (Whisper and CMU Sphinx).
 Systemd Service
     A systemd service file is provided to allow the application to start on boot.
+Voice Commands
+    The ability to execute commands with your voice. The following commands are available:
+    - "open firefox"
+    - "open terminal"
+    - "mouse up"
+    - "mouse down"
+    - "mouse left"
+    - "mouse right"
+    - "mouse click"
+    - "select all"
+    - "copy"
+    - "paste"
+    - "switch application"
+    - "switch window"
+Context-Aware Dictation
+    Automatic punctuation and smart formatting.
+Deeper Desktop Integration
+    Cursor control and voice-based text editing.
+Accessibility Features
+    Voice-based navigation.
+User Experience Improvements
+    Visual feedback in the UI.
 Numbers as Digits
    Optional conversion from numbers to digits.
 
@@ -108,11 +130,7 @@ Install
 
 .. code-block:: sh
 
-   uv pip install git+https://github.com/openai/whisper.git
-   uv pip install pynput
-   uv pip install pocketsphinx
-   git clone https://github.com/ideasman42/nerd-dictation.git
-   cd nerd-dictation
+    ./install.sh
 
 To test dictation, run the script and press the hotkey (Ctrl+Alt+D):
 

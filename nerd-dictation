@@ -934,6 +934,10 @@ def get_config():
         config.read(config_path)
     return config
 
+def set_status(status):
+    with open("/tmp/nerd-dictation-status", "w") as f:
+        f.write(status)
+
 def text_from_engine(
     *,
     engine: str,
@@ -952,6 +956,7 @@ def text_from_engine(
 ) -> bool:
     import speech_recognition as sr
 
+    set_status("Listening...")
     r = sr.Recognizer()
     with sr.Microphone(device_index=None if pulse_device_name == "" else int(pulse_device_name), sample_rate=sample_rate) as source:
         if verbose >= 1:
@@ -964,6 +969,7 @@ def text_from_engine(
         audio_data = r.listen(source)
         if verbose >= 1:
             sys.stderr.write("Recognizing...\n")
+        set_status("Recognizing...")
 
         try:
             if engine == "Whisper":
@@ -980,6 +986,9 @@ def text_from_engine(
                     sys.stderr.write(f"Unknown engine: {engine}\n")
                 return False
 
+            config = get_config()
+            if config.getboolean('settings', 'auto_punctuation', fallback=False):
+                text += "."
             handle_fn(0, process_fn(text))
             return True
         except sr.UnknownValueError:
@@ -1098,14 +1107,19 @@ def main_begin(
         #
         # Simple text post processing and capitalization.
         #
-        text = process_text(
-            text,
-            full_sentence=full_sentence,
-            numbers_as_digits=numbers_as_digits,
-            numbers_use_separator=numbers_use_separator,
-            numbers_min_value=numbers_min_value,
-            numbers_no_suffix=numbers_no_suffix,
-        )
+        import commands
+        if text in commands.COMMANDS:
+            commands.execute_command(text)
+            return ""
+        else:
+            text = process_text(
+                text,
+                full_sentence=full_sentence,
+                numbers_as_digits=numbers_as_digits,
+                numbers_use_separator=numbers_use_separator,
+                numbers_min_value=numbers_min_value,
+                numbers_no_suffix=numbers_no_suffix,
+            )
 
         #
         # User text post processing (when found).

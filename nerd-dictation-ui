@@ -4,6 +4,15 @@ import tkinter as tk
 from tkinter import ttk
 
 class App(tk.Tk):
+    def update_status(self):
+        try:
+            with open("/tmp/nerd-dictation-status", "r") as f:
+                status = f.read()
+                self.status_bar.config(text=status)
+        except FileNotFoundError:
+            self.status_bar.config(text="Idle")
+        self.after(1000, self.update_status)
+
     def __init__(self):
         super().__init__()
 
@@ -30,9 +39,21 @@ class App(tk.Tk):
         hotkey_entry = ttk.Entry(self, textvariable=self.hotkey_var)
         hotkey_entry.pack()
 
+        # Auto punctuation
+        self.auto_punctuation_var = tk.BooleanVar()
+        auto_punctuation_checkbutton = ttk.Checkbutton(
+            self,
+            text="Enable automatic punctuation",
+            variable=self.auto_punctuation_var
+        )
+        auto_punctuation_checkbutton.pack()
+
         # Save button
         save_button = ttk.Button(self, text="Save", command=self.save_settings)
         save_button.pack()
+
+        self.status_bar = ttk.Label(self, text="Idle", relief=tk.SUNKEN, anchor=tk.W)
+        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
     def save_settings(self):
         import configparser
@@ -41,7 +62,8 @@ class App(tk.Tk):
         config = configparser.ConfigParser()
         config['settings'] = {
             'model': self.model_var.get(),
-            'hotkey': self.hotkey_var.get()
+            'hotkey': self.hotkey_var.get(),
+            'auto_punctuation': self.auto_punctuation_var.get()
         }
 
         config_dir = os.path.expanduser("~/.config/nerd-dictation")
@@ -61,6 +83,7 @@ class App(tk.Tk):
             config.read(config_path)
             self.model_var.set(config.get('settings', 'model', fallback='Whisper'))
             self.hotkey_var.set(config.get('settings', 'hotkey', fallback='<ctrl>+<alt>+d'))
+            self.auto_punctuation_var.set(config.getboolean('settings', 'auto_punctuation', fallback=False))
 
     def __init__(self):
         super().__init__()
@@ -70,6 +93,7 @@ class App(tk.Tk):
 
         self.create_widgets()
         self.load_settings()
+        self.update_status()
 
 if __name__ == "__main__":
     app = App()
