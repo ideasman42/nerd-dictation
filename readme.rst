@@ -5,7 +5,7 @@ Nerd Dictation
 *Offline Speech to Text for Desktop Linux.* - See `demo video <https://www.youtube.com/watch?v=T7sR-4DFhpQ>`__.
 
 This is a utility that provides simple access speech to text for using in Linux
-without being tied to a desktop environment, using the excellent `Whisper <https://github.com/openai/whisper>`__.
+without being tied to a desktop environment, using the excellent `Whisper <https://github.com/openai/whisper>`__ or `CMU Sphinx <https://cmusphinx.github.io/>`__.
 
 Simple
    This is a single file Python script with minimal dependencies.
@@ -22,6 +22,12 @@ Usage
 
 Press the hotkey (Ctrl+Alt+D) to start and stop dictation.
 
+To configure the application, run the UI:
+
+.. code-block:: sh
+
+   python3 nerd-dictation-ui
+
 For details on how this can be used, see:
 ``nerd-dictation --help`` and ``nerd-dictation begin --help``.
 
@@ -31,6 +37,12 @@ Features
 
 Specific features include:
 
+UI for Configuration
+    A simple UI to configure the speech recognition model, hotkey, and other settings.
+Multi-Engine Support
+    Support for multiple speech recognition engines (Whisper and CMU Sphinx).
+Systemd Service
+    A systemd service file is provided to allow the application to start on boot.
 Numbers as Digits
    Optional conversion from numbers to digits.
 
@@ -64,6 +76,7 @@ Dependencies
 
 - Python 3.9 (or newer).
 - The Whisper library.
+- The CMU Sphinx library.
 - An audio recording utility (``parec`` by default).
 - An input simulation utility (``xdotool`` by default).
 
@@ -97,6 +110,7 @@ Install
 
    uv pip install git+https://github.com/openai/whisper.git
    uv pip install pynput
+   uv pip install pocketsphinx
    git clone https://github.com/ideasman42/nerd-dictation.git
    cd nerd-dictation
 
@@ -105,6 +119,12 @@ To test dictation, run the script and press the hotkey (Ctrl+Alt+D):
 .. code-block:: sh
 
    python3 nerd-dictation
+
+To configure the application, run the UI:
+
+.. code-block:: sh
+
+    python3 nerd-dictation-ui
 
 .. hint::
 
@@ -143,6 +163,8 @@ Paths
 
 Local Configuration
    ``~/.config/nerd-dictation/nerd-dictation.py``
+Settings
+    ``~/.config/nerd-dictation/settings.ini``
 
 
 Command Line Arguments

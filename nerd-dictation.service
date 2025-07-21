@@ -1,0 +1,12 @@
+[Unit]
+Description=Nerd Dictation Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /path/to/nerd-dictation
+Restart=on-failure
+User=your_user
+
+[Install]
+WantedBy=multi-user.target

@@ -924,8 +924,19 @@ def recording_proc_with_non_blocking_stdout(
     return ps, stdout
 
 
-def text_from_whisper(
+def get_config():
+    import configparser
+    import os
+
+    config = configparser.ConfigParser()
+    config_path = os.path.expanduser("~/.config/nerd-dictation/settings.ini")
+    if os.path.exists(config_path):
+        config.read(config_path)
+    return config
+
+def text_from_engine(
     *,
+    engine: str,
     exit_fn: Callable[..., int],
     process_fn: Callable[[str], str],
     handle_fn: Callable[[int, str], None],
@@ -939,12 +950,9 @@ def text_from_whisper(
     suspend_on_start: bool = False,
     verbose: int = 0,
 ) -> bool:
-    import whisper
     import speech_recognition as sr
 
-    model = whisper.load_model("base")
     r = sr.Recognizer()
-
     with sr.Microphone(device_index=None if pulse_device_name == "" else int(pulse_device_name), sample_rate=sample_rate) as source:
         if verbose >= 1:
             sys.stderr.write("Adjusting for ambient noise...\n")
@@ -957,13 +965,31 @@ def text_from_whisper(
         if verbose >= 1:
             sys.stderr.write("Recognizing...\n")
 
-        with open("speech.wav", "wb") as f:
-            f.write(audio_data.get_wav_data())
+        try:
+            if engine == "Whisper":
+                import whisper
+                model = whisper.load_model("base")
+                with open("speech.wav", "wb") as f:
+                    f.write(audio_data.get_wav_data())
+                result = model.transcribe("speech.wav")
+                text = result["text"]
+            elif engine == "CMU Sphinx":
+                text = r.recognize_sphinx(audio_data)
+            else:
+                if verbose >= 1:
+                    sys.stderr.write(f"Unknown engine: {engine}\n")
+                return False
 
-        result = model.transcribe("speech.wav")
-        text = result["text"]
-        handle_fn(0, process_fn(text))
-        return True
+            handle_fn(0, process_fn(text))
+            return True
+        except sr.UnknownValueError:
+            if verbose >= 1:
+                sys.stderr.write(f"{engine} could not understand audio\n")
+            return False
+        except sr.RequestError as e:
+            if verbose >= 1:
+                sys.stderr.write(f"{engine} error; {e}\n")
+            return False
 
 def main_begin(
     *,
@@ -1132,7 +1158,26 @@ def main_begin(
         # Unreachable.
         assert False
 
-    # TODO: Implement speech recognition here.
+    config = get_config()
+    engine = config.get('settings', 'model', fallback='Whisper')
+
+    found_any = text_from_engine(
+        engine=engine,
+        pulse_device_name=pulse_device_name,
+        sample_rate=sample_rate,
+        input_method=input_method,
+        timeout=timeout,
+        idle_time=idle_time,
+        progressive=progressive,
+        progressive_continuous=progressive_continuous,
+        exit_fn=exit_fn,
+        process_fn=process_fn,
+        handle_fn=handle_fn,
+        suspend_on_start=suspend_on_start,
+        verbose=verbose,
+    )
+
+    if not found_any:
 
     sys.stderr.write("No text found in the audio\n")
     # Avoid continuing punctuation from where this recording (which recorded nothing) left off.
