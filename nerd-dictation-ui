@@ -13,11 +13,27 @@ class App(tk.Tk):
             self.status_bar.config(text="Idle")
         self.after(1000, self.update_status)
 
+    def record_hotkey(self):
+        self.hotkey_window = tk.Toplevel(self)
+        self.hotkey_window.title("Record Hotkey")
+        self.hotkey_window.geometry("200x100")
+
+        label = ttk.Label(self.hotkey_window, text="Press a key combination.")
+        label.pack()
+
+        self.hotkey_window.bind("<KeyPress>", self.on_key_press)
+
+    def on_key_press(self, event):
+        hotkey = f"<{'ctrl' if event.state & 4 else ''}{'alt' if event.state & 8 else ''}{'shift' if event.state & 1 else ''}>+{event.keysym}"
+        self.hotkey_var.set(hotkey)
+        self.hotkey_display.config(text=hotkey)
+        self.hotkey_window.destroy()
+
     def __init__(self):
         super().__init__()
 
         self.title("Nerd Dictation Settings")
-        self.geometry("400x300")
+        self.geometry("500x400")
 
         self.create_widgets()
 
@@ -36,8 +52,17 @@ class App(tk.Tk):
         hotkey_label.pack()
 
         self.hotkey_var = tk.StringVar()
-        hotkey_entry = ttk.Entry(self, textvariable=self.hotkey_var)
-        hotkey_entry.pack()
+        hotkey_frame = ttk.Frame(self)
+        hotkey_frame.pack()
+
+        self.hotkey_label = ttk.Label(hotkey_frame, text="Current Hotkey:")
+        self.hotkey_label.pack(side=tk.LEFT)
+
+        self.hotkey_display = ttk.Label(hotkey_frame, text=self.hotkey_var.get())
+        self.hotkey_display.pack(side=tk.LEFT)
+
+        record_hotkey_button = ttk.Button(hotkey_frame, text="Record New Hotkey", command=self.record_hotkey)
+        record_hotkey_button.pack(side=tk.LEFT)
 
         # Auto punctuation
         self.auto_punctuation_var = tk.BooleanVar()

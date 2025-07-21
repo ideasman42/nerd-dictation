@@ -1192,11 +1192,10 @@ def main_begin(
     )
 
     if not found_any:
-
-    sys.stderr.write("No text found in the audio\n")
-    # Avoid continuing punctuation from where this recording (which recorded nothing) left off.
-    touch(path_to_cookie)
-    return
+        sys.stderr.write("No text found in the audio\n")
+        # Avoid continuing punctuation from where this recording (which recorded nothing) left off.
+        touch(path_to_cookie)
+        return
 
 
 def main_end(
