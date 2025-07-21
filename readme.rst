@@ -5,7 +5,7 @@ Nerd Dictation
 *Offline Speech to Text for Desktop Linux.* - See `demo video <https://www.youtube.com/watch?v=T7sR-4DFhpQ>`__.
 
 This is a utility that provides simple access speech to text for using in Linux
-without being tied to a desktop environment, using the excellent `VOSK-API <https://github.com/alphacep/vosk-api>`__.
+without being tied to a desktop environment, using the excellent `Whisper <https://github.com/openai/whisper>`__.
 
 Simple
    This is a single file Python script with minimal dependencies.
@@ -14,22 +14,13 @@ Hackable
 Zero Overhead
    As this relies on manual activation there are no background processes.
 
-Dictation is accessed manually with begin/end commands.
+Dictation is accessed manually with a hotkey (Ctrl+Alt+D by default).
 
 
 Usage
 =====
 
-It is suggested to bind begin/end/cancel to shortcut keys.
-
-.. code-block:: sh
-
-   nerd-dictation begin
-
-.. code-block:: sh
-
-   nerd-dictation end
-
+Press the hotkey (Ctrl+Alt+D) to start and stop dictation.
 
 For details on how this can be used, see:
 ``nerd-dictation --help`` and ``nerd-dictation begin --help``.
@@ -71,8 +62,8 @@ See ``nerd-dictation begin --help`` for details on how to access these options.
 Dependencies
 ============
 
-- Python 3.6 (or newer).
-- The VOSK-API.
+- Python 3.9 (or newer).
+- The Whisper library.
 - An audio recording utility (``parec`` by default).
 - An input simulation utility (``xdotool`` by default).
 
@@ -104,34 +95,21 @@ Install
 
 .. code-block:: sh
 
-   pip3 install vosk
+   uv pip install git+https://github.com/openai/whisper.git
+   uv pip install pynput
    git clone https://github.com/ideasman42/nerd-dictation.git
    cd nerd-dictation
-   wget https://alphacephei.com/kaldi/models/vosk-model-small-en-us-0.15.zip
-   unzip vosk-model-small-en-us-0.15.zip
-   mv vosk-model-small-en-us-0.15 model
 
-To test dictation:
+To test dictation, run the script and press the hotkey (Ctrl+Alt+D):
 
 .. code-block:: sh
 
-   ./nerd-dictation begin --vosk-model-dir=./model &
-   # Start speaking.
-   ./nerd-dictation end
-
-
-- Reminder that it's up to you to bind begin/end/cancel to actions you can easily access (typically key shortcuts).
-- To avoid having to pass the ``--vosk-model-dir`` argument, copy the model to the default path:
-
-  .. code-block:: sh
-
-     mkdir -p ~/.config/nerd-dictation
-     mv ./model ~/.config/nerd-dictation
+   python3 nerd-dictation
 
 .. hint::
 
    Once this is working properly you may wish to download one of the larger language models for more accurate dictation.
-   They are available `here <https://alphacephei.com/vosk/models>`__.
+   They are available `here <https://github.com/openai/whisper#available-models-and-languages>`__.
 
 
 If you prefer to use a package, see: `Packaging <package/readme.rst>`_.
@@ -165,10 +143,6 @@ Paths
 
 Local Configuration
    ``~/.config/nerd-dictation/nerd-dictation.py``
-Language Model
-   ``~/.config/nerd-dictation/model``
-
-   Note that ``--vosk-model-dir=PATH`` can be used to override the default.
 
 
 Command Line Arguments
@@ -183,7 +157,6 @@ usage::
        nerd-dictation [-h]  ...
 
 This is a utility that activates speech to text on Linux.
-While it could use any system currently it uses the VOSK-API.
 
 positional arguments:
 
@@ -202,7 +175,6 @@ Subcommand: ``begin``
 usage::
 
        nerd-dictation begin [-h] [--cookie FILE_PATH] [--config FILE]
-                            [--vosk-model-dir DIR] [--vosk-grammar-file DIR]
                             [--pulse-device-name IDENTIFIER]
                             [--sample-rate HZ] [--defer-output] [--continuous]
                             [--timeout SECONDS] [--idle-time SECONDS]
@@ -223,11 +195,6 @@ options:
   --cookie FILE_PATH    Location for writing a temporary cookie (this file is monitored to begin/end dictation).
   --config FILE         Override the file used for the user configuration.
                         Use an empty string to prevent the users configuration being read.
-  --vosk-model-dir DIR  Path to the VOSK model, see: https://alphacephei.com/vosk/models
-  --vosk-grammar-file DIR
-                        Path to a JSON grammar file.  This restricts the phrases recognized by VOSK for
-                        better accuracy.  See `vosk_recognizer_new_grm` in the API reference:
-                        https://github.com/alphacep/vosk-api/blob/master/src/vosk_api.h
   --pulse-device-name IDENTIFIER
                         The name of the pulse-audio device to use for recording.
                         See the output of "pactl list sources" to find device names (using the identifier following "Name:").
@@ -392,15 +359,11 @@ Other Software
 ==============
 
 - `Elograf <https://github.com/papoteur-mga/elograf>`__ - nerd-dictation GUI front-end that runs as a tray icon.
-- `Numen <https://numen.johngebbie.com>`__ - voice input for desktop computing that also uses VOSK.
+- `Numen <https://numen.johngebbie.com>`__ - voice input for desktop computing that also uses Whisper.
 
 
 Limitations
 ===========
-
-- Text from VOSK is all lower-case,
-  while the user configuration can be used to set the case of common words like ``I`` this isn't very convenient
-  (see the example configuration for details).
 
 - For some users the delay in start up may be noticeable on systems with slower hard disks
   especially when running for the 1st time (a cold start).
@@ -413,5 +376,4 @@ Further Work
 ============
 
 - Support a general solution to capitalize words (proper nouns for example).
-- Possibly other speech to text engines *(only if they provide some significant benefits)*.
 - Possibly support Windows & macOS.

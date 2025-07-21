@@ -59,7 +59,7 @@ def main(base_dir):
         packages=[""],
         package_data={"": [NERD_DICTATION_DST, README_DST]},
         include_package_data=True,
-        install_requires=["vosk"],
+        install_requires=["SpeechRecognition"],
         python_requires=">=3.8",
     )
 
