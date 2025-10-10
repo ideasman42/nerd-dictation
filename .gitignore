@@ -7,3 +7,12 @@ __pycache__/
 
 # Fallback location used for the language model.
 /model
+
+# Pyinstaller stuff
+dist
+build
+app
+*.spec
+
+# Icon file
+*.png
