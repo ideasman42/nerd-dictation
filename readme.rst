@@ -137,6 +137,98 @@ To test dictation:
 If you prefer to use a package, see: `Packaging <package/readme.rst>`_.
 
 
+Ubuntu Quickstart (tested on Ubuntu 24.10)
+-----------------------------------------
+
+The following steps install the exact system and Python dependencies needed on Ubuntu and resolve common errors.
+
+1) Install system dependencies (audio capture and input simulation):
+
+.. code-block:: sh
+
+   sudo apt-get update
+   sudo apt-get install -y pulseaudio-utils xdotool
+
+2) Install the VOSK Python package.
+
+On recent Ubuntu releases you may see an "externally-managed-environment" error from pip (PEP 668). Choose one of the following:
+
+- Using a virtual environment (recommended):
+
+  .. code-block:: sh
+
+     python3 -m venv .venv
+     . .venv/bin/activate
+     pip install vosk
+
+- Using pipx:
+
+  .. code-block:: sh
+
+     sudo apt-get install -y pipx
+     pipx install vosk
+
+- Using pip for the current user (at your own risk):
+
+  .. code-block:: sh
+
+     pip3 install --user --break-system-packages vosk
+
+3) Download and prepare a VOSK model:
+
+.. code-block:: sh
+
+   wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
+   unzip -q vosk-model-small-en-us-0.15.zip
+   mv vosk-model-small-en-us-0.15 model
+
+4) Run nerd-dictation:
+
+.. code-block:: sh
+
+   ./nerd-dictation begin --vosk-model-dir=./model
+
+Troubleshooting (Ubuntu)
+-----------------------
+
+- parec not found
+
+  You may see:
+
+  ::
+
+     FileNotFoundError: [Errno 2] No such file or directory: 'parec'
+
+  Install PulseAudio utilities:
+
+  .. code-block:: sh
+
+     sudo apt-get install -y pulseaudio-utils
+
+- xdotool not found
+
+  .. code-block:: sh
+
+     sudo apt-get install -y xdotool
+
+- pip error: externally-managed-environment
+
+  Use a virtualenv or pipx as shown above, or run:
+
+  .. code-block:: sh
+
+     pip3 install --user --break-system-packages vosk
+
+- Wayland display server
+
+  xdotool works on X11. On Wayland, use wtype or ydotool:
+
+  .. code-block:: sh
+
+     sudo apt-get install -y wtype
+     ./nerd-dictation begin --simulate-input-tool=WTYPE --vosk-model-dir=./model
+
+
 Configuration
 =============
 
