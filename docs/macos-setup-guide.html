@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nerd Dictation for macOS - Complete Setup & SOCA Pulse Optimization Guide</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #7c3aed;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --bg-dark: #1e293b;
+            --bg-light: #f8fafc;
+            --text-dark: #0f172a;
+            --text-light: #64748b;
+            --border-color: #e2e8f0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.7;
+            color: var(--text-dark);
+            background: var(--bg-light);
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        nav {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+        }
+        
+        nav a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        nav a:hover {
+            color: var(--secondary-color);
+        }
+        
+        section {
+            background: white;
+            margin: 2rem 0;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        h2 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--primary-color);
+        }
+        
+        h3 {
+            color: var(--secondary-color);
+            font-size: 1.5rem;
+            margin: 1.5rem 0 1rem 0;
+        }
+        
+        h4 {
+            color: var(--text-dark);
+            font-size: 1.2rem;
+            margin: 1rem 0 0.5rem 0;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .feature-card {
+            padding: 1.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .feature-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.1);
+        }
+        
+        .feature-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .feature-card h3 {
+            margin-top: 0;
+            font-size: 1.3rem;
+        }
+        
+        .code-block {
+            background: var(--bg-dark);
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
+        .code-block code {
+            color: #e2e8f0;
+        }
+        
+        .shortcut {
+            display: inline-block;
+            background: var(--bg-dark);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-weight: bold;
+            margin: 0 0.25rem;
+        }
+        
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 4px solid;
+        }
+        
+        .alert-info {
+            background: #dbeafe;
+            border-color: var(--primary-color);
+            color: #1e40af;
+        }
+        
+        .alert-success {
+            background: #d1fae5;
+            border-color: var(--success-color);
+            color: #065f46;
+        }
+        
+        .alert-warning {
+            background: #fef3c7;
+            border-color: var(--warning-color);
+            color: #92400e;
+        }
+        
+        .alert-danger {
+            background: #fee2e2;
+            border-color: var(--danger-color);
+            color: #991b1b;
+        }
+        
+        .pulse-section {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border-left: 5px solid var(--primary-color);
+            padding: 2rem;
+            margin: 2rem 0;
+            border-radius: 8px;
+        }
+        
+        .pulse-section h3 {
+            color: var(--primary-color);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: var(--bg-light);
+        }
+        
+        ul, ol {
+            margin-left: 2rem;
+            margin-top: 0.5rem;
+        }
+        
+        li {
+            margin: 0.5rem 0;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 0.25rem;
+        }
+        
+        .badge-primary { background: var(--primary-color); color: white; }
+        .badge-success { background: var(--success-color); color: white; }
+        .badge-warning { background: var(--warning-color); color: white; }
+        
+        footer {
+            background: var(--bg-dark);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+        
+        @media (max-width: 768px) {
+            header h1 { font-size: 1.8rem; }
+            nav ul { flex-direction: column; gap: 0.5rem; }
+            .container { padding: 1rem; }
+            section { padding: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎤 Nerd Dictation for macOS</h1>
+        <p>Complete Setup Guide with SOCA Pulse Optimization Methodology</p>
+        <p style="font-size: 0.9rem; margin-top: 0.5rem;">🔒 100% Offline | 🚀 95%+ Accuracy | 🆓 Free & Open Source</p>
+    </header>
+    
+    <nav>
+        <ul>
+            <li><a href="#quick-start">Quick Start</a></li>
+            <li><a href="#installation">Installation</a></li>
+            <li><a href="#automator">Keyboard Shortcuts</a></li>
+            <li><a href="#soca-pulse">SOCA Pulse Method</a></li>
+            <li><a href="#optimization">Optimization Tips</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+        </ul>
+    </nav>
+    
+    <div class="container">
+        <!-- Quick Start -->
+        <section id="quick-start">
+            <h2>⚡ Quick Start</h2>
+            
+            <div class="alert alert-success">
+                <strong>✅ Prerequisites Installed:</strong> PulseAudio, Full VOSK models (EN + FR), Launch scripts configured
+            </div>
+            
+            <h3>Keyboard Shortcuts (After Automator Setup)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Action</th>
+                        <th>Shortcut</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>🇫🇷 Start French</td>
+                        <td><span class="shortcut">⌘⇧F</span></td>
+                        <td>Launch French dictation (95%+ accuracy)</td>
+                    </tr>
+                    <tr>
+                        <td>🇬🇧 Start English</td>
+                        <td><span class="shortcut">⌘⇧E</span></td>
+                        <td>Launch English dictation (95%+ accuracy)</td>
+                    </tr>
+                    <tr>
+                        <td>⏹️ Stop</td>
+                        <td><span class="shortcut">⌘⇧X</span></td>
+                        <td>Stop active dictation session</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>Terminal Commands (Alternative)</h3>
+            <div class="code-block"><code># Start French dictation
+~/.config/nerd-dictation/vosk-fr.sh
+
+# Start English dictation
+~/.config/nerd-dictation/vosk-en.sh
+
+# Stop dictation
+~/.config/nerd-dictation/vosk-end.sh</code></div>
+        </section>
+        
+        <!-- Installation -->
+        <section id="installation">
+            <h2>📦 Complete Installation</h2>
+            
+            <h3>Step 1: Install Dependencies</h3>
+            <div class="code-block"><code># Install Python 3 (if not already installed)
+brew install python3
+
+# Install VOSK API
+pip3 install vosk
+
+# Install PulseAudio (for audio capture)
+brew install pulseaudio</code></div>
+            
+            <h3>Step 2: Clone Repository</h3>
+            <div class="code-block"><code>cd ~/SOCA/PROJECTS
+git clone https://github.com/ideasman42/nerd-dictation.git
+cd nerd-dictation</code></div>
+            
+            <h3>Step 3: Download Full Language Models</h3>
+            <div class="alert alert-info">
+                <strong>💡 Pro Tip:</strong> Use full models for 95%+ accuracy. Small models are only ~60-70% accurate.
+            </div>
+            
+            <div class="code-block"><code># Create models directory
+mkdir -p ~/.local/share/vosk-models
+cd ~/.local/share/vosk-models
+
+# Download English model (~1.8GB)
+curl -L -o vosk-model-en-us-0.22.zip \
+  https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip
+unzip vosk-model-en-us-0.22.zip
+
+# Download French model (~1.4GB)
+curl -L -o vosk-model-fr-0.22.zip \
+  https://alphacephei.com/vosk/models/vosk-model-fr-0.22.zip
+unzip vosk-model-fr-0.22.zip
+
+# Clean up zip files (optional - saves 3.2GB)
+rm *.zip</code></div>
+            
+            <h3>Step 4: Create Launch Scripts</h3>
+            <div class="code-block"><code># Create config directory
+mkdir -p ~/.config/nerd-dictation
+
+# Create French dictation script
+cat > ~/.config/nerd-dictation/vosk-fr.sh << 'EOF'
+#!/bin/bash
+MODEL_DIR="$HOME/.local/share/vosk-models/vosk-model-fr-0.22"
+cd "$HOME/SOCA/PROJECTS/nerd-dictation"
+./nerd-dictation begin --vosk-model-dir="$MODEL_DIR" --punctuate-from-previous-timeout 2.0
+EOF
+
+# Create English dictation script
+cat > ~/.config/nerd-dictation/vosk-en.sh << 'EOF'
+#!/bin/bash
+MODEL_DIR="$HOME/.local/share/vosk-models/vosk-model-en-us-0.22"
+cd "$HOME/SOCA/PROJECTS/nerd-dictation"
+./nerd-dictation begin --vosk-model-dir="$MODEL_DIR" --punctuate-from-previous-timeout 2.0
+EOF
+
+# Create stop script
+cat > ~/.config/nerd-dictation/vosk-end.sh << 'EOF'
+#!/bin/bash
+cd "$HOME/SOCA/PROJECTS/nerd-dictation"
+./nerd-dictation end
+EOF
+
+# Make scripts executable
+chmod +x ~/.config/nerd-dictation/*.sh</code></div>
+            
+            <h3>Step 5: Test Installation</h3>
+            <div class="code-block"><code># Test French dictation
+~/.config/nerd-dictation/vosk-fr.sh
+# Speak: "Bonjour, ceci est un test."
+~/.config/nerd-dictation/vosk-end.sh
+
+# Test English dictation
+~/.config/nerd-dictation/vosk-en.sh
+# Speak: "Hello, this is a test."
+~/.config/nerd-dictation/vosk-end.sh</code></div>
+        </section>
+        
+        <!-- Automator Setup -->
+        <section id="automator">
+            <h2>⌨️ Keyboard Shortcuts Setup (Automator)</h2>
+            
+            <div class="alert alert-warning">
+                <strong>⚠️ Important:</strong> These shortcuts provide instant voice control from any application.
+            </div>
+            
+            <h3>Create Quick Actions</h3>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="icon">🇫🇷</div>
+                    <h3>Start French Dictation</h3>
+                    <ol>
+                        <li>Open <strong>Automator</strong></li>
+                        <li>New → <strong>Quick Action</strong></li>
+                        <li>Workflow receives: <em>no input</em></li>
+                        <li>Add <strong>Run Shell Script</strong></li>
+                        <li>Shell: <code>/bin/zsh</code></li>
+                        <li>Paste script (see below)</li>
+                        <li>Save as "Start French Dictation"</li>
+                    </ol>
+                    <div class="code-block" style="font-size: 0.8rem;"><code>#!/bin/zsh
+export PATH="/usr/local/bin:$PATH"
+"$HOME/.config/nerd-dictation/vosk-fr.sh" &
+osascript -e 'display notification "🇫🇷 Français activé" with title "Dictation"'</code></div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon">🇬🇧</div>
+                    <h3>Start English Dictation</h3>
+                    <ol>
+                        <li>Open <strong>Automator</strong></li>
+                        <li>New → <strong>Quick Action</strong></li>
+                        <li>Workflow receives: <em>no input</em></li>
+                        <li>Add <strong>Run Shell Script</strong></li>
+                        <li>Shell: <code>/bin/zsh</code></li>
+                        <li>Paste script (see below)</li>
+                        <li>Save as "Start English Dictation"</li>
+                    </ol>
+                    <div class="code-block" style="font-size: 0.8rem;"><code>#!/bin/zsh
+export PATH="/usr/local/bin:$PATH"
+"$HOME/.config/nerd-dictation/vosk-en.sh" &
+osascript -e 'display notification "🇬🇧 English activated" with title "Dictation"'</code></div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon">⏹️</div>
+                    <h3>Stop Dictation</h3>
+                    <ol>
+                        <li>Open <strong>Automator</strong></li>
+                        <li>New → <strong>Quick Action</strong></li>
+                        <li>Workflow receives: <em>no input</em></li>
+                        <li>Add <strong>Run Shell Script</strong></li>
+                        <li>Shell: <code>/bin/zsh</code></li>
+                        <li>Paste script (see below)</li>
+                        <li>Save as "Stop Dictation"</li>
+                    </ol>
+                    <div class="code-block" style="font-size: 0.8rem;"><code>#!/bin/zsh
+export PATH="/usr/local/bin:$PATH"
+"$HOME/.config/nerd-dictation/vosk-end.sh"
+osascript -e 'display notification "⏹️ Stopped" with title "Dictation"'</code></div>
+                </div>
+            </div>
+            
+            <h3>Assign Keyboard Shortcuts</h3>
+            <ol>
+                <li>Open <strong>System Settings</strong></li>
+                <li>Go to <strong>Keyboard</strong> → <strong>Keyboard Shortcuts</strong> → <strong>Services</strong></li>
+                <li>Scroll to <strong>General</strong> section</li>
+                <li>Find your Quick Actions and assign shortcuts:
+                    <ul>
+                        <li><strong>Start French Dictation</strong> → <span class="shortcut">⌘⇧F</span></li>
+                        <li><strong>Start English Dictation</strong> → <span class="shortcut">⌘⇧E</span></li>
+                        <li><strong>Stop Dictation</strong> → <span class="shortcut">⌘⇧X</span></li>
+                    </ul>
+                </li>
+            </ol>
+            
+            <div class="alert alert-info">
+                <strong>🔐 Permissions:</strong> Ensure Automator has <strong>Accessibility</strong> and <strong>Microphone</strong> permissions in System Settings → Privacy & Security.
+            </div>
+        </section>
+        
+        <!-- SOCA Pulse Methodology -->
+        <section id="soca-pulse" class="pulse-section">
+            <h2>🌊 SOCA Pulse Optimization Methodology</h2>
+            
+            <div class="alert alert-info">
+                <strong>📘 What is SOCA Pulse?</strong><br>
+                SOCA Pulse is an iterative, feedback-driven approach to optimizing voice-coding workflows. It emphasizes continuous refinement, context-aware dictation, and fail-closed validation.
+            </div>
+            
+            <h3>Core Principles</h3>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="icon">🔄</div>
+                    <h3>Iterative Refinement</h3>
+                    <p>Start with basic dictation, analyze errors, refine pronunciation and context, repeat. Each cycle improves accuracy.</p>
+                    <span class="badge badge-primary">Continuous Improvement</span>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon">🎯</div>
+                    <h3>Context-Aware Dictation</h3>
+                    <p>Use domain-specific vocabulary. Train the model with technical terms, code patterns, and project-specific jargon.</p>
+                    <span class="badge badge-success">Domain Adaptation</span>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon">🛡️</div>
+                    <h3>Fail-Closed Validation</h3>
+                    <p>Always verify output. If dictation fails or produces errors, stop and correct immediately rather than continuing.</p>
+                    <span class="badge badge-warning">Quality First</span>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon">📊</div>
+                    <h3>Metrics & Feedback</h3>
+                    <p>Track accuracy rates, common errors, and time saved. Use data to guide optimization efforts.</p>
+                    <span class="badge badge-primary">Data-Driven</span>
+                </div>
+            </div>
+            
+            <h3>SOCA Pulse Workflow for Voice Coding</h3>
+            
+            <h4>Phase 1: Baseline Assessment</h4>
+            <ol>
+                <li><strong>Test Baseline Accuracy</strong>
+                    <ul>
+                        <li>Dictate 100 words of typical code comments</li>
+                        <li>Measure Word Error Rate (WER)</li>
+                        <li>Identify common error patterns</li>
+                    </ul>
+                </li>
+                <li><strong>Analyze Failure Modes</strong>
+                    <ul>
+                        <li>Technical terms (e.g., "PostgreSQL", "kubectl")</li>
+                        <li>Code syntax (e.g., "dot then" vs. ".then")</li>
+                        <li>Punctuation patterns</li>
+                    </ul>
+                </li>
+            </ol>
+            
+            <h4>Phase 2: Custom Vocabulary</h4>
+            <div class="alert alert-success">
+                <strong>💡 Pro Tip:</strong> Create a custom configuration file to transform technical terms and code patterns.
+            </div>
+            
+            <div class="code-block"><code># ~/.config/nerd-dictation/nerd-dictation.py
+import re
+
+def nerd_dictation_process(text):
+    """Custom post-processing for technical dictation"""
+    
+    # Technical term corrections
+    replacements = {
+        "postgres sequel": "PostgreSQL",
+        "kube control": "kubectl",
+        "docker compose": "docker-compose",
+        "git hub": "GitHub",
+        "versus code": "VS Code",
+        "type script": "TypeScript",
+        "java script": "JavaScript",
+        "react jay ess": "React.js",
+        "node jay ess": "Node.js",
+    }
+    
+    text_lower = text.lower()
+    for pattern, replacement in replacements.items():
+        text_lower = text_lower.replace(pattern, replacement)
+    
+    # Code pattern transformations
+    text_lower = re.sub(r'\bdot\s+([a-z]+)\b', r'.\1', text_lower)  # "dot then" → ".then"
+    text_lower = re.sub(r'\barrow function\b', '->', text_lower)
+    text_lower = re.sub(r'\bequals equals\b', '==', text_lower)
+    text_lower = re.sub(r'\btriple equals\b', '===', text_lower)
+    
+    return text_lower</code></div>
+            
+            <h4>Phase 3: Speaking Techniques</h4>
+            <ul>
+                <li><strong>Clear Pronunciation:</strong> Articulate technical terms slowly</li>
+                <li><strong>Chunk Content:</strong> Speak in logical units (one function signature, one comment)</li>
+                <li><strong>Pause Strategy:</strong> Use natural pauses (2 sec timeout configured)</li>
+                <li><strong>Microphone Position:</strong> 15-20cm from mouth, avoid breath noise</li>
+                <li><strong>Ambient Noise:</strong> Minimize background noise for best results</li>
+            </ul>
+            
+            <h4>Phase 4: Workflow Integration</h4>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Use Case</th>
+                        <th>Recommended Approach</th>
+                        <th>Expected Accuracy</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>📝 Code Comments</td>
+                        <td>Dictate full sentences, review</td>
+                        <td><span class="badge badge-success">95%+</span></td>
+                    </tr>
+                    <tr>
+                        <td>📄 Documentation</td>
+                        <td>Dictate paragraphs, light editing</td>
+                        <td><span class="badge badge-success">98%+</span></td>
+                    </tr>
+                    <tr>
+                        <td>🐛 Commit Messages</td>
+                        <td>Short dictation, verify before commit</td>
+                        <td><span class="badge badge-success">95%+</span></td>
+                    </tr>
+                    <tr>
+                        <td>💬 Code Review Comments</td>
+                        <td>Natural speech, minimal editing</td>
+                        <td><span class="badge badge-success">97%+</span></td>
+                    </tr>
+                    <tr>
+                        <td>⚙️ Variable Names</td>
+                        <td>Use camelCase pronunciation</td>
+                        <td><span class="badge badge-warning">85%+</span></td>
+                    </tr>
+                    <tr>
+                        <td>🔧 Code Blocks</td>
+                        <td>Hybrid: dictate + manual typing</td>
+                        <td><span class="badge badge-warning">70-80%</span></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Phase 5: Continuous Refinement</h4>
+            <ol>
+                <li><strong>Daily Log:</strong> Track errors and patterns in a notebook</li>
+                <li><strong>Weekly Review:</strong> Update custom vocabulary based on logs</li>
+                <li><strong>Monthly Metrics:</strong> Calculate WER, time saved, satisfaction</li>
+                <li><strong>Quarterly Optimization:</strong> Major config updates, model upgrades</li>
+            </ol>
+            
+            <div class="alert alert-success">
+                <strong>🎯 Target Metrics:</strong><br>
+                After 30 days of SOCA Pulse optimization:<br>
+                • <strong>WER:</strong> <5% for prose, <15% for code<br>
+                • <strong>Time Savings:</strong> 30-40% on documentation tasks<br>
+                • <strong>Satisfaction:</strong> >8/10 user rating
+            </div>
+        </section>
+        
+        <!-- Optimization Tips -->
+        <section id="optimization">
+            <h2>🚀 Advanced Optimization Tips</h2>
+            
+            <h3>Performance Tuning</h3>
+            
+            <h4>1. Adjust Timeout Settings</h4>
+            <div class="code-block"><code># Faster timeout for short bursts (e.g., variable names)
+--punctuate-from-previous-timeout 1.0
+
+# Longer timeout for continuous dictation (e.g., documentation)
+--punctuate-from-previous-timeout 3.0</code></div>
+            
+            <h4>2. Suspend/Resume for Faster Startup</h4>
+            <div class="code-block"><code># Start dictation
+nerd-dictation begin --vosk-model-dir=~/.local/share/vosk-models/vosk-model-en-us-0.22
+
+# Suspend when not in use (keeps model in memory)
+nerd-dictation suspend
+
+# Resume instantly (no reload time)
+nerd-dictation resume</code></div>
+            
+            <h4>3. Output to STDOUT (for preprocessing)</h4>
+            <div class="code-block"><code># Capture dictation output, process, then paste
+nerd-dictation begin --output=STDOUT | your-custom-processor | pbcopy</code></div>
+            
+            <h3>Hardware Recommendations</h3>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="icon">🎙️</div>
+                    <h3>Microphone Quality</h3>
+                    <p><strong>Budget:</strong> MacBook built-in (acceptable)<br>
+                    <strong>Better:</strong> USB mic (Blue Yeti, Audio-Technica)<br>
+                    <strong>Best:</strong> Condenser mic + audio interface</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon">💻</div>
+                    <h3>System Resources</h3>
+                    <p><strong>RAM:</strong> 8GB minimum, 16GB+ recommended<br>
+                    <strong>CPU:</strong> Intel i5/M1+ (models are CPU-intensive)<br>
+                    <strong>Disk:</strong> 5GB free for full models</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon">🔊</div>
+                    <h3>Audio Setup</h3>
+                    <p><strong>Position:</strong> 15-20cm from mouth<br>
+                    <strong>Gain:</strong> Adjust to avoid clipping<br>
+                    <strong>Environment:</strong> Quiet room, soft furnishings</p>
+                </div>
+            </div>
+            
+            <h3>Multi-Language Workflow</h3>
+            <div class="alert alert-info">
+                <strong>💡 Bilingual Tip:</strong> Use separate shortcuts for each language. Don't rely on auto-detection.
+            </div>
+            
+            <ol>
+                <li><strong>Separate Models:</strong> Use language-specific scripts (FR/EN)</li>
+                <li><strong>Context Switching:</strong> Stop one language before starting another</li>
+                <li><strong>Consistent Accents:</strong> Maintain pronunciation consistency within each language</li>
+                <li><strong>Custom Configs:</strong> Create separate config files for language-specific patterns</li>
+            </ol>
+        </section>
+        
+        <!-- Troubleshooting -->
+        <section id="troubleshooting">
+            <h2>🔧 Troubleshooting</h2>
+            
+            <h3>Common Issues & Solutions</h3>
+            
+            <h4>❌ "parec command not found"</h4>
+            <div class="code-block"><code>brew install pulseaudio</code></div>
+            
+            <h4>❌ No text appears when speaking</h4>
+            <ul>
+                <li>Check microphone permissions: System Settings → Privacy & Security → Microphone</li>
+                <li>Verify Terminal/iTerm is allowed to use microphone</li>
+                <li>Test microphone in another app (Voice Memos)</li>
+                <li>Check if dictation process is running: <code>ps aux | grep nerd-dictation</code></li>
+            </ul>
+            
+            <h4>❌ Poor accuracy / Wrong words</h4>
+            <ul>
+                <li>Upgrade to full models (not small models)</li>
+                <li>Speak more clearly and at normal pace</li>
+                <li>Position microphone closer (15-20cm)</li>
+                <li>Reduce background noise</li>
+                <li>Create custom configuration for technical terms</li>
+            </ul>
+            
+            <h4>❌ Wrong language detected</h4>
+            <ul>
+                <li>Use language-specific scripts (vosk-fr.sh vs vosk-en.sh)</li>
+                <li>Don't mix languages in one session</li>
+                <li>Stop and restart when switching languages</li>
+            </ul>
+            
+            <h4>❌ Keyboard shortcuts not working</h4>
+            <ul>
+                <li>Check System Settings → Keyboard → Keyboard Shortcuts → Services</li>
+                <li>Ensure Automator has Accessibility permissions</li>
+                <li>Verify Quick Actions are saved in ~/Library/Services/</li>
+                <li>Try logging out and back in</li>
+            </ul>
+            
+            <h4>❌ High CPU usage</h4>
+            <ul>
+                <li>Normal: Full models are CPU-intensive during active dictation</li>
+                <li>Use suspend/resume instead of stopping/starting repeatedly</li>
+                <li>Close other resource-heavy applications</li>
+                <li>Consider using small models for low-priority tasks</li>
+            </ul>
+            
+            <h3>Debug Mode</h3>
+            <div class="code-block"><code># Run with verbose output to see errors
+cd ~/SOCA/PROJECTS/nerd-dictation
+./nerd-dictation begin --vosk-model-dir=~/.local/share/vosk-models/vosk-model-en-us-0.22 --verbose
+
+# Check logs in Console.app
+# Filter: process:nerd-dictation OR process:Automator</code></div>
+            
+            <h3>Reset & Reinstall</h3>
+            <div class="code-block"><code># Kill all processes
+killall -9 nerd-dictation
+
+# Remove old models
+rm -rf ~/.local/share/vosk-models/*
+
+# Remove config
+rm -rf ~/.config/nerd-dictation/*
+
+# Reinstall from scratch (see Installation section)</code></div>
+        </section>
+        
+        <!-- Resources -->
+        <section id="resources">
+            <h2>📚 Additional Resources</h2>
+            
+            <h3>Official Links</h3>
+            <ul>
+                <li>🔗 <a href="https://github.com/ideasman42/nerd-dictation" target="_blank">Nerd Dictation GitHub</a></li>
+                <li>🔗 <a href="https://alphacephei.com/vosk/" target="_blank">VOSK Speech Recognition</a></li>
+                <li>🔗 <a href="https://alphacephei.com/vosk/models" target="_blank">Download Language Models</a></li>
+            </ul>
+            
+            <h3>SOCA Ecosystem</h3>
+            <ul>
+                <li>📖 SOCA Documentation: Complete guide to the ADE-ADL multi-agent system</li>
+                <li>🛠️ SOCA CLI: Command-line tools for workflow automation</li>
+                <li>🌐 Galaxie_ADL: Knowledge graph and asset registry</li>
+                <li>🎯 SOCA Pulse: Iterative optimization methodology</li>
+            </ul>
+            
+            <h3>Recommended Configurations</h3>
+            <ul>
+                <li>📝 <a href="../examples/" target="_blank">Example Configuration Files</a></li>
+                <li>⌨️ <a href="../automator-workflows/" target="_blank">Automator Workflow Templates</a></li>
+                <li>🔧 <a href="https://github.com/ideasman42/nerd-dictation/blob/master/examples/" target="_blank">Advanced Examples</a></li>
+            </ul>
+        </section>
+        
+        <!-- Privacy -->
+        <section id="privacy">
+            <h2>🔒 Privacy & Security</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="icon">🏠</div>
+                    <h3>100% Local Processing</h3>
+                    <p>All audio processing happens on your device. Nothing is uploaded or stored remotely.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon">🔑</div>
+                    <h3>No API Keys</h3>
+                    <p>No accounts, no registrations, no API keys. Completely anonymous usage.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon">✈️</div>
+                    <h3>Offline Capable</h3>
+                    <p>Works without internet. Perfect for sensitive work or travel.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="icon">🔓</div>
+                    <h3>Open Source</h3>
+                    <p>Auditable code under Apache 2.0 license. No hidden tracking or telemetry.</p>
+                </div>
+            </div>
+            
+            <div class="alert alert-success">
+                <strong>✅ GDPR Compliant:</strong> No data collection, no data transmission, no data retention. Perfect for enterprise and regulated environments.
+            </div>
+        </section>
+    </div>
+    
+    <footer>
+        <p><strong>Nerd Dictation for macOS</strong> | SOCA Pulse Optimization Guide</p>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+            Created with ❤️ for the SOCA Agentic Development Ecosystem
+        </p>
+        <p style="margin-top: 1rem; font-size: 0.85rem; opacity: 0.8;">
+            © 2025 | Licensed under Apache 2.0 | Contributions welcome
+        </p>
+    </footer>
+</body>
+</html>

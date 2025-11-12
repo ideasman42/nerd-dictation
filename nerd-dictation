@@ -46,12 +46,26 @@ SIMULATE_INPUT_CODE_COMMAND = -1
 
 
 def run_command_or_exit_on_failure(cmd: List[str]) -> None:
+    _run_command_and_return_subprocess(cmd)
+
+
+def _run_command_and_return_subprocess(cmd: List[str]) -> Tuple[subprocess.Popen[bytes], IO[bytes]]:
     try:
-        subprocess.check_output(cmd)
-    # Don't catch other kinds of exceptions as they should never happen
-    # and can be considered a severe error which doesn't need to be made "user friendly".
+        ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        stdout = ps.stdout
+        assert stdout is not None
+        return ps, stdout
     except FileNotFoundError as ex:
-        sys.stderr.write("Command {!r} not found: {!s}\n".format(cmd[0], ex))
+        if cmd[0] == "parec":
+            sys.stderr.write(
+                "The 'parec' command was not found. Please install PulseAudio utilities.\n"
+                "On Debian/Ubuntu: sudo apt-get install pulseaudio-utils\n"
+                "On Fedora: sudo dnf install pulseaudio-utils\n"
+                "On Arch Linux: sudo pacman -S pulseaudio\n"
+                "On macOS (with Homebrew): brew install pulseaudio\n"
+            )
+        else:
+            sys.stderr.write("Command {!r} not found: {!s}\n".format(cmd[0], ex))
         sys.exit(1)
 
 
@@ -915,9 +929,7 @@ def recording_proc_with_non_blocking_stdout(
         sys.stderr.write("--input %r not supported.\n" % input_method)
         sys.exit(1)
 
-    ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    stdout = ps.stdout
-    assert stdout is not None
+    ps, stdout = _run_command_and_return_subprocess(cmd)
 
     # Needed so whatever is available can be read (without waiting).
     file_handle_make_non_blocking(stdout)
