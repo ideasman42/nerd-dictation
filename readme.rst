@@ -30,6 +30,14 @@ It is suggested to bind begin/end/cancel to shortcut keys.
 
    nerd-dictation end
 
+Alternatively, use ``toggle`` to control dictation with a single shortcut key:
+
+.. code-block:: sh
+
+   nerd-dictation toggle
+
+This cycles through states: not running → running → suspended → running → ...
+
 
 For details on how this can be used, see:
 ``nerd-dictation --help`` and ``nerd-dictation begin --help``.
@@ -188,6 +196,7 @@ While it could use any system currently it uses the VOSK-API.
 positional arguments:
 
     :begin:               Begin dictation.
+    :toggle:              Toggle dictation state (start/suspend/resume).
     :end:                 End dictation.
     :cancel:              Cancel dictation.
     :suspend:             Suspend the dictation process.
@@ -296,6 +305,41 @@ options:
                         - Level 2: report internal details (may be noisy).
   ``-`` ...             End argument parsing.
                         This can be used for user defined arguments which configuration scripts may read from the ``sys.argv``.
+
+Subcommand: ``toggle``
+----------------------
+
+usage::
+
+       nerd-dictation toggle [-h] [--cookie FILE_PATH]
+                            [--vosk-model-dir DIR] [--vosk-grammar-file DIR]
+                            [--pulse-device-name IDENTIFIER]
+                            [--sample-rate HZ] [--defer-output] [--continuous]
+                            [--timeout SECONDS] [--idle-time SECONDS]
+                            [--delay-exit SECONDS] [--suspend-on-start]
+                            [--punctuate-from-previous-timeout SECONDS]
+                            [--full-sentence] [--numbers-as-digits]
+                            [--numbers-use-separator]
+                            [--numbers-min-value NUMBERS_MIN_VALUE]
+                            [--numbers-no-suffix] [--input INPUT_METHOD]
+                            [--output OUTPUT_METHOD]
+                            [--simulate-input-tool SIMULATE_INPUT_TOOL]
+                            [--verbose VERBOSE] [- ...]
+
+Toggle dictation state based on current process status:
+
+- If not running: start dictation (like ``begin``)
+- If running: suspend dictation
+- If suspended: resume dictation
+
+This command is useful for binding to a single keyboard shortcut,
+allowing you to control dictation with one key instead of separate begin/suspend/resume bindings.
+
+options:
+  -h, --help            show this help message and exit
+  --cookie FILE_PATH    Location for writing a temporary cookie (this file is monitored to begin/end dictation).
+
+All other options are the same as the ``begin`` subcommand and are only used when starting dictation.
 
 Subcommand: ``end``
 -------------------

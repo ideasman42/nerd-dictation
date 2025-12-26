@@ -91,6 +91,41 @@ def file_remove_if_exists(filepath: str) -> bool:
         return False
 
 
+def process_get_state(path_to_cookie: str) -> Tuple[str, int]:
+    """
+    Detect nerd-dictation process state.
+    Returns: (state, pid) where state is 'not_running' | 'suspended' | 'running'
+    """
+    if not os.path.exists(path_to_cookie):
+        return ('not_running', 0)
+
+    try:
+        with open(path_to_cookie, 'r', encoding='utf-8') as fh:
+            pid = int(fh.read().strip())
+    except (ValueError, OSError):
+        return ('not_running', 0)
+
+    proc_stat_path = '/proc/{:d}/stat'.format(pid)
+    if not os.path.exists(proc_stat_path):
+        return ('not_running', 0)
+
+    try:
+        with open(proc_stat_path, 'r', encoding='utf-8') as fh:
+            # Format: pid (comm) state ...
+            # State is field index 2 (after the command in parentheses)
+            content = fh.read()
+            # Find the closing parenthesis of comm field, state follows
+            paren_end = content.rfind(')')
+            if paren_end == -1:
+                return ('not_running', 0)
+            state_char = content[paren_end + 2:paren_end + 3]
+            if state_char == 'T':
+                return ('suspended', pid)
+            return ('running', pid)
+    except OSError:
+        return ('not_running', 0)
+
+
 def file_handle_make_non_blocking(file_handle: IO[bytes]) -> None:
     import fcntl
 
@@ -1523,6 +1558,112 @@ def main_suspend(
         os.kill(pid, signal.SIGCONT)
 
 
+def main_toggle(
+    *,
+    path_to_cookie: str = "",
+    verbose: int = 0,
+    # All begin parameters passed through.
+    vosk_model_dir: str = "",
+    pulse_device_name: str = "",
+    sample_rate: int = 44100,
+    input_method: str = "PAREC",
+    progressive: bool = False,
+    progressive_continuous: bool = False,
+    full_sentence: bool = False,
+    numbers_as_digits: bool = False,
+    numbers_use_separator: bool = False,
+    numbers_min_value: Optional[int] = None,
+    numbers_no_suffix: bool = False,
+    timeout: float = 0.0,
+    idle_time: float = 0.0,
+    delay_exit: float = 0.0,
+    punctuate_from_previous_timeout: float = 0.0,
+    config_override: Optional[str] = None,
+    output: str = "SIMULATE_INPUT",
+    simulate_input_tool: str = "XDOTOOL",
+    suspend_on_start: bool = False,
+    vosk_grammar_file: str = "",
+) -> None:
+    """
+    Toggle dictation state: start if not running, suspend if running, resume if suspended.
+    """
+    import signal
+
+    if not path_to_cookie:
+        path_to_cookie = os.path.join(tempfile.gettempdir(), TEMP_COOKIE_NAME)
+
+    state, pid = process_get_state(path_to_cookie)
+
+    if state == 'not_running':
+        if verbose >= 1:
+            sys.stderr.write("Starting dictation.\n")
+        main_begin(
+            path_to_cookie=path_to_cookie,
+            vosk_model_dir=vosk_model_dir,
+            pulse_device_name=pulse_device_name,
+            sample_rate=sample_rate,
+            input_method=input_method,
+            progressive=progressive,
+            progressive_continuous=progressive_continuous,
+            full_sentence=full_sentence,
+            numbers_as_digits=numbers_as_digits,
+            numbers_use_separator=numbers_use_separator,
+            numbers_min_value=numbers_min_value,
+            numbers_no_suffix=numbers_no_suffix,
+            timeout=timeout,
+            idle_time=idle_time,
+            delay_exit=delay_exit,
+            punctuate_from_previous_timeout=punctuate_from_previous_timeout,
+            config_override=config_override,
+            output=output,
+            simulate_input_tool=simulate_input_tool,
+            suspend_on_start=suspend_on_start,
+            verbose=verbose,
+            vosk_grammar_file=vosk_grammar_file,
+        )
+    elif state == 'suspended':
+        if verbose >= 1:
+            sys.stderr.write("Resuming dictation.\n")
+        try:
+            os.kill(pid, signal.SIGCONT)
+        except ProcessLookupError:
+            if verbose >= 1:
+                sys.stderr.write("Process disappeared, starting fresh.\n")
+            # Process died between state check and signal, start fresh.
+            main_toggle(
+                path_to_cookie=path_to_cookie,
+                verbose=verbose,
+                vosk_model_dir=vosk_model_dir,
+                pulse_device_name=pulse_device_name,
+                sample_rate=sample_rate,
+                input_method=input_method,
+                progressive=progressive,
+                progressive_continuous=progressive_continuous,
+                full_sentence=full_sentence,
+                numbers_as_digits=numbers_as_digits,
+                numbers_use_separator=numbers_use_separator,
+                numbers_min_value=numbers_min_value,
+                numbers_no_suffix=numbers_no_suffix,
+                timeout=timeout,
+                idle_time=idle_time,
+                delay_exit=delay_exit,
+                punctuate_from_previous_timeout=punctuate_from_previous_timeout,
+                config_override=config_override,
+                output=output,
+                simulate_input_tool=simulate_input_tool,
+                suspend_on_start=suspend_on_start,
+                vosk_grammar_file=vosk_grammar_file,
+            )
+    else:  # state == 'running'
+        if verbose >= 1:
+            sys.stderr.write("Suspending dictation.\n")
+        try:
+            os.kill(pid, signal.SIGUSR1)
+        except ProcessLookupError:
+            if verbose >= 1:
+                sys.stderr.write("Process disappeared.\n")
+
+
 def argparse_generic_command_cookie(subparse: argparse.ArgumentParser) -> None:
     subparse.add_argument(
         "--cookie",
@@ -1535,19 +1676,8 @@ def argparse_generic_command_cookie(subparse: argparse.ArgumentParser) -> None:
     )
 
 
-def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
-    subparse = subparsers.add_parser(
-        "begin",
-        help="Begin dictation.",
-        description=(
-            "This creates the directory used to store internal data, "
-            "so other commands such as sync can be performed."
-        ),
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-
-    argparse_generic_command_cookie(subparse)
-
+def argparse_generic_command_begin_options(subparse: argparse.ArgumentParser) -> None:
+    """Add all begin-specific options to a subparser. Shared by 'begin' and 'toggle' commands."""
     subparse.add_argument(
         "--config",
         default=None,
@@ -1829,6 +1959,21 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         required=False,
     )
 
+
+def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+    subparse = subparsers.add_parser(
+        "begin",
+        help="Begin dictation.",
+        description=(
+            "This creates the directory used to store internal data, "
+            "so other commands such as sync can be performed."
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+
+    argparse_generic_command_cookie(subparse)
+    argparse_generic_command_begin_options(subparse)
+
     subparse.add_argument(
         "-",
         dest="rest",
@@ -1952,12 +2097,71 @@ def argparse_create_resume(subparsers: "argparse._SubParsersAction[argparse.Argu
     )
 
 
+def argparse_create_toggle(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+    subparse = subparsers.add_parser(
+        "toggle",
+        help="Toggle dictation state (start/suspend/resume).",
+        description=(
+            "Toggle dictation state based on current process status:\n"
+            "\n"
+            "- If not running: start dictation (like 'begin')\n"
+            "- If running: suspend dictation\n"
+            "- If suspended: resume dictation\n"
+            "\n"
+            "This command is useful for binding to a single keyboard shortcut."
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+
+    argparse_generic_command_cookie(subparse)
+    argparse_generic_command_begin_options(subparse)
+
+    subparse.add_argument(
+        "-",
+        dest="rest",
+        default=False,
+        nargs=argparse.REMAINDER,
+        help=(
+            "End argument parsing.\n"
+            "This can be used for user defined arguments which configuration scripts may read from the ``sys.argv``."
+        ),
+    )
+
+    subparse.set_defaults(
+        func=lambda args: main_toggle(
+            path_to_cookie=args.path_to_cookie,
+            vosk_model_dir=args.vosk_model_dir,
+            pulse_device_name=args.pulse_device_name,
+            sample_rate=args.sample_rate,
+            input_method=args.input_method,
+            progressive=not (args.defer_output or args.output == "STDOUT"),
+            progressive_continuous=args.progressive_continuous,
+            full_sentence=args.full_sentence,
+            numbers_as_digits=args.numbers_as_digits,
+            numbers_use_separator=args.numbers_use_separator,
+            numbers_min_value=args.numbers_min_value,
+            numbers_no_suffix=args.numbers_no_suffix,
+            timeout=args.timeout,
+            idle_time=min(args.idle_time, 0.5),
+            delay_exit=args.delay_exit,
+            punctuate_from_previous_timeout=args.punctuate_from_previous_timeout,
+            config_override=args.config,
+            output=args.output,
+            simulate_input_tool=args.simulate_input_tool,
+            suspend_on_start=args.suspend_on_start,
+            verbose=args.verbose,
+            vosk_grammar_file=args.vosk_grammar_file,
+        ),
+    )
+
+
 def argparse_create() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
 
     subparsers = parser.add_subparsers()
 
     argparse_create_begin(subparsers)
+    argparse_create_toggle(subparsers)
 
     argparse_create_end(subparsers)
     argparse_create_cancel(subparsers)
