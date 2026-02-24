@@ -279,6 +279,7 @@ def simulate_typing_with_wtype(delete_prev_chars: int, text: str) -> None:
     run_command_or_exit_on_failure(
         [
             cmd,
+            "--",
             text,
         ]
     )
