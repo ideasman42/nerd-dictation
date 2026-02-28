@@ -3,6 +3,9 @@
 Changelog
 #########
 
+- 2026/02/28: Add ``--engine=sherpa`` for sherpa-onnx streaming speech recognition with CUDA GPU acceleration.
+- 2026/02/28: Add ``--simulate-input-tool=YDOTOOL_CLIPBOARD`` for Wayland clipboard injection via ``wl-copy``.
+- 2026/02/28: Timeout auto-suspend in ``--continuous`` mode (``SIGUSR1`` instead of exit).
 - 2023/02/09: Add ``--vosk-grammar-file`` allowing a restricted set of words.
 - 2023/02/09: Use ``SIGHUB`` to reload the user configuration at run-time.
 - 2023/02/02: Add ``--suspend-on-start`` argument to the ``begin`` sub-command.

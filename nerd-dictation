@@ -11,6 +11,8 @@ While it could use any system currently it uses the VOSK-API.
 # All built in modules.
 import argparse
 import os
+import queue
+import signal
 import stat
 import subprocess
 import sys
@@ -205,6 +207,44 @@ def simulate_typing_with_ydotool(delete_prev_chars: int, text: str) -> None:
             "--",
             text,
         ]
+    )
+
+
+# -----------------------------------------------------------------------------
+# Simulate Input: YDOTOOL_CLIPBOARD
+#
+def simulate_typing_with_ydotool_clipboard(delete_prev_chars: int, text: str) -> None:
+    cmd = "ydotool"
+
+    # No setup/tear-down.
+    if delete_prev_chars == SIMULATE_INPUT_CODE_COMMAND:
+        return
+
+    if delete_prev_chars:
+        # ydotool's key subcommand works with int key IDs and key states. 14 is
+        # the linux keycode for the backspace key, and :1 and :0 respectively
+        # stand for "pressed" and "released."
+        #
+        # The key delay is lower than the typing setting because it applies to
+        # each key state change (pressed, released).
+        run_command_or_exit_on_failure(
+            [
+                cmd,
+                "key",
+                "--key-delay",
+                "3",
+                "--",
+                *(["14:1", "14:0"] * delete_prev_chars),
+            ]
+        )
+
+    # Use wl-copy + Ctrl+V to paste text via the Wayland clipboard.
+    # This avoids input method (e.g. Fcitx5) intercepting simulated keystrokes
+    # which would garble CJK characters.
+    subprocess.run(["wl-copy", "--", text], check=True)
+    time.sleep(0.03)
+    run_command_or_exit_on_failure(
+        [cmd, "key", "--key-delay", "0", "29:1", "47:1", "47:0", "29:0"]
     )
 
 
@@ -1165,8 +1205,6 @@ def text_from_vosk_pipe(
             sys.stderr.write("Reload.\n")
         process_fn("")
 
-    import signal
-
     # Suspend resume from separate signals.
     signal.signal(signal.SIGUSR1, handle_sig_suspend_from_usr1)
 
@@ -1238,8 +1276,12 @@ def text_from_vosk_pipe(
                 if json_text != timeout_text_prev:
                     timeout_text_prev = json_text
                     timeout_time_prev = time.time()
-                elif time.time() - timeout_time_prev > timeout:
-                    if code == 0:
+                elif time.time() - timeout_time_prev > timeout and code == 0:
+                    if progressive_continuous:
+                        os.kill(os.getpid(), signal.SIGUSR1)
+                        timeout_text_prev = ""
+                        timeout_time_prev = time.time()
+                    else:
                         code = 1  # The time was exceeded, exit!
 
     # Close the recording process.
@@ -1266,9 +1308,255 @@ def text_from_vosk_pipe(
     return handled_any
 
 
+def text_from_sherpa_pipe(
+    *,
+    model_dir: str,
+    exit_fn: Callable[..., int],
+    process_fn: Callable[[str], str],
+    handle_fn: Callable[[int, str], None],
+    timeout: float,
+    idle_time: float,
+    progressive: bool,
+    progressive_continuous: bool,
+    suspend_on_start: bool = False,
+    verbose: int = 0,
+) -> bool:
+    # lazy import: optional deps, moving to top would crash vosk-only usage
+    from types import FrameType
+
+    import numpy as np
+    import sherpa_onnx
+    import sounddevice as sd
+
+    sample_rate = 16000
+    samples_per_read = int(0.1 * sample_rate)
+
+    if verbose >= 1:
+        sys.stderr.write("Loading sherpa-onnx model...\n")
+
+    model_kwargs = dict(
+        encoder=os.path.join(model_dir, "encoder-epoch-99-avg-1.int8.onnx"),
+        decoder=os.path.join(model_dir, "decoder-epoch-99-avg-1.onnx"),
+        joiner=os.path.join(model_dir, "joiner-epoch-99-avg-1.int8.onnx"),
+        tokens=os.path.join(model_dir, "tokens.txt"),
+        num_threads=1,
+        sample_rate=sample_rate,
+        feature_dim=80,
+        enable_endpoint_detection=True,
+        rule1_min_trailing_silence=2.4,
+        rule2_min_trailing_silence=1.2,
+        rule3_min_utterance_length=300,
+    )
+    for provider in ("cuda", "cpu"):
+        model_kwargs["provider"] = provider
+        # try-catch approved: CUDA libs may be missing, fall back to CPU
+        try:
+            recognizer = sherpa_onnx.OnlineRecognizer.from_transducer(**model_kwargs)
+            break
+        except RuntimeError:
+            if provider == "cpu":
+                raise
+            if verbose >= 1:
+                sys.stderr.write("CUDA unavailable, falling back to CPU.\n")
+
+    if verbose >= 1:
+        sys.stderr.write("Model loaded.\n")
+
+    audio_queue: "queue.Queue[Optional[bytes]]" = queue.Queue()
+    stream = recognizer.create_stream()
+    sd_stream: Optional[sd.InputStream] = None
+
+    def audio_callback(indata, frames, time_info, status):
+        audio_queue.put(bytes(indata))
+
+    def recording_start():
+        nonlocal sd_stream
+        sd_stream = sd.InputStream(
+            samplerate=sample_rate, channels=1, dtype="float32",
+            callback=audio_callback, blocksize=samples_per_read,
+        )
+        sd_stream.start()
+
+    def recording_stop():
+        nonlocal sd_stream
+        if sd_stream is not None:
+            sd_stream.stop()
+            sd_stream.close()
+            sd_stream = None
+
+    has_recording = False
+    if not suspend_on_start:
+        recording_start()
+        has_recording = True
+
+    if not (progressive and progressive_continuous):
+        text_list: List[str] = []
+
+    handled_any = False
+    text_prev = ""
+
+    def handle_fn_suspended():
+        nonlocal handled_any, text_prev
+        handled_any = False
+        text_prev = ""
+        if not (progressive and progressive_continuous):
+            text_list.clear()
+
+    def handle_fn_wrapper(text: str, is_partial: bool):
+        nonlocal handled_any, text_prev
+        if not progressive:
+            if is_partial:
+                return
+            text_list.append(text)
+            handled_any = True
+            return
+
+        if progressive_continuous:
+            text_curr = process_fn(text)
+        else:
+            text_curr = process_fn(" ".join(text_list + [text]))
+
+        if text_curr != text_prev:
+            match = min(len(text_curr), len(text_prev))
+            for i in range(match):
+                if text_curr[i] != text_prev[i]:
+                    match = i
+                    break
+            handle_fn(len(text_prev) - match, text_curr[match:])
+            text_prev = text_curr
+
+        if not is_partial:
+            if progressive_continuous:
+                text_prev = ""
+            else:
+                text_list.append(text)
+
+        handled_any = True
+
+    suspend = suspend_on_start
+
+    def do_suspend_pause():
+        nonlocal has_recording
+        result = recognizer.get_result(stream)
+        if result:
+            handle_fn_wrapper(result, False)
+        recognizer.reset(stream)
+        handle_fn_suspended()
+        if verbose >= 1:
+            sys.stderr.write("Recording suspended.\n")
+        if has_recording:
+            handle_fn(SIMULATE_INPUT_CODE_COMMAND, "TEARDOWN")
+            recording_stop()
+            has_recording = False
+
+    def do_suspend_resume():
+        nonlocal has_recording
+        if verbose >= 1:
+            sys.stderr.write("Recording.\n")
+        handle_fn(SIMULATE_INPUT_CODE_COMMAND, "SETUP")
+        recording_start()
+        has_recording = True
+
+    def handle_sig_suspend(_signum: int, _frame: Optional[FrameType]):
+        nonlocal suspend
+        if suspend:
+            return
+        suspend = True
+        do_suspend_pause()
+        os.kill(os.getpid(), signal.SIGSTOP)
+
+    def handle_sig_resume(_signum: int, _frame: Optional[FrameType]):
+        nonlocal suspend
+        if not suspend:
+            return
+        suspend = False
+
+    signal.signal(signal.SIGUSR1, handle_sig_suspend)
+    signal.signal(signal.SIGTSTP, handle_sig_suspend)
+    signal.signal(signal.SIGCONT, handle_sig_resume)
+
+    if not suspend_on_start:
+        handle_fn(SIMULATE_INPUT_CODE_COMMAND, "SETUP")
+
+    if suspend:
+        os.kill(os.getpid(), signal.SIGSTOP)
+
+    # -- Main loop --
+    use_timeout = timeout != 0.0
+    if use_timeout:
+        timeout_text_prev = ""
+        timeout_time_prev = time.time()
+
+    code = 0
+    while code == 0:
+        code = exit_fn(handled_any)
+        if suspend:
+            continue
+
+        if idle_time > 0.0:
+            time.sleep(min(idle_time, 0.5))
+
+        if not has_recording:
+            do_suspend_resume()
+            continue
+
+        chunks = []
+        while not audio_queue.empty():
+            chunks.append(audio_queue.get_nowait())
+        if not chunks:
+            continue
+
+        data = b"".join(chunks)
+        samples = np.frombuffer(data, dtype=np.float32)
+        stream.accept_waveform(sample_rate, samples)
+
+        while recognizer.is_ready(stream):
+            recognizer.decode_stream(stream)
+
+        result = recognizer.get_result(stream)
+        is_endpoint = recognizer.is_endpoint(stream)
+
+        if result:
+            handle_fn_wrapper(result, not is_endpoint)
+
+        if is_endpoint:
+            recognizer.reset(stream)
+
+        if use_timeout:
+            if result != timeout_text_prev:
+                timeout_text_prev = result
+                timeout_time_prev = time.time()
+            elif time.time() - timeout_time_prev > timeout and code == 0:
+                if progressive_continuous:
+                    os.kill(os.getpid(), signal.SIGUSR1)
+                    timeout_text_prev = ""
+                    timeout_time_prev = time.time()
+                else:
+                    code = 1
+
+    if has_recording:
+        recording_stop()
+        has_recording = False
+        handle_fn(SIMULATE_INPUT_CODE_COMMAND, "TEARDOWN")
+
+    if code == -1:
+        sys.stderr.write("Text input canceled!\n")
+        sys.exit(0)
+
+    result = recognizer.get_result(stream)
+    if result:
+        handle_fn_wrapper(result, False)
+
+    if not progressive:
+        handle_fn(0, process_fn(" ".join(text_list)))
+
+    return handled_any
+
+
 def main_begin(
     *,
     vosk_model_dir: str,
+    engine: str = "vosk",
     path_to_cookie: str = "",
     pulse_device_name: str = "",
     sample_rate: int = 44100,
@@ -1416,6 +1704,8 @@ def main_begin(
             handle_fn = simulate_typing_with_xdotool
         elif simulate_input_tool == "YDOTOOL":
             handle_fn = simulate_typing_with_ydotool
+        elif simulate_input_tool == "YDOTOOL_CLIPBOARD":
+            handle_fn = simulate_typing_with_ydotool_clipboard
         elif simulate_input_tool == "DOTOOL":
             handle_fn = simulate_typing_with_dotool
         elif simulate_input_tool == "DOTOOLC":
@@ -1442,22 +1732,36 @@ def main_begin(
         # Unreachable.
         assert False
 
-    found_any = text_from_vosk_pipe(
-        vosk_model_dir=vosk_model_dir,
-        pulse_device_name=pulse_device_name,
-        sample_rate=sample_rate,
-        input_method=input_method,
-        timeout=timeout,
-        idle_time=idle_time,
-        progressive=progressive,
-        progressive_continuous=progressive_continuous,
-        exit_fn=exit_fn,
-        process_fn=process_fn,
-        handle_fn=handle_fn,
-        suspend_on_start=suspend_on_start,
-        verbose=verbose,
-        vosk_grammar_file=vosk_grammar_file,
-    )
+    if engine == "sherpa":
+        found_any = text_from_sherpa_pipe(
+            model_dir=vosk_model_dir,
+            timeout=timeout,
+            idle_time=idle_time,
+            progressive=progressive,
+            progressive_continuous=progressive_continuous,
+            exit_fn=exit_fn,
+            process_fn=process_fn,
+            handle_fn=handle_fn,
+            suspend_on_start=suspend_on_start,
+            verbose=verbose,
+        )
+    else:
+        found_any = text_from_vosk_pipe(
+            vosk_model_dir=vosk_model_dir,
+            pulse_device_name=pulse_device_name,
+            sample_rate=sample_rate,
+            input_method=input_method,
+            timeout=timeout,
+            idle_time=idle_time,
+            progressive=progressive,
+            progressive_continuous=progressive_continuous,
+            exit_fn=exit_fn,
+            process_fn=process_fn,
+            handle_fn=handle_fn,
+            suspend_on_start=suspend_on_start,
+            verbose=verbose,
+            vosk_grammar_file=vosk_grammar_file,
+        )
 
     if not found_any:
         sys.stderr.write("No text found in the audio\n")
@@ -1549,6 +1853,16 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
     argparse_generic_command_cookie(subparse)
 
     subparse.add_argument(
+        "--engine",
+        default="vosk",
+        dest="engine",
+        type=str,
+        choices=("vosk", "sherpa"),
+        help=("Speech recognition engine: vosk (default) or sherpa (sherpa-onnx streaming)."),
+        required=False,
+    )
+
+    subparse.add_argument(
         "--config",
         default=None,
         dest="config",
@@ -1567,7 +1881,7 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         dest="vosk_model_dir",
         type=str,
         metavar="DIR",
-        help=("Path to the VOSK model, see: https://alphacephei.com/vosk/models"),
+        help=("Path to the model directory (VOSK or sherpa-onnx model)."),
         required=False,
     )
 
@@ -1799,7 +2113,7 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         "--simulate-input-tool",
         dest="simulate_input_tool",
         default="XDOTOOL",
-        choices=("XDOTOOL", "DOTOOL", "DOTOOLC", "YDOTOOL", "WTYPE", "STDOUT"),
+        choices=("XDOTOOL", "DOTOOL", "DOTOOLC", "YDOTOOL", "YDOTOOL_CLIPBOARD", "WTYPE", "STDOUT"),
         metavar="SIMULATE_INPUT_TOOL",
         help=(
             "Program used to simulate keystrokes (default).\n"
@@ -1808,6 +2122,9 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
             "- ``DOTOOL`` Compatible with all Linux distributions and Wayland.\n"
             "- ``DOTOOLC`` Same as DOTOOL but for use with the `dotoold` daemon.\n"
             "- ``YDOTOOL`` Compatible with all Linux distributions and Wayland but requires some setup.\n"
+            "- ``YDOTOOL_CLIPBOARD`` Like YDOTOOL but injects text via ``wl-copy`` + Ctrl+V.\n"
+            "  Use this on Wayland when an input method (e.g. Fcitx5) intercepts simulated keystrokes.\n"
+            "  Requires ``wl-copy`` (from ``wl-clipboard``).\n"
             "- ``WTYPE`` Compatible with Wayland.\n"
             "- ``STDOUT`` Bare stdout with Ctrl-H for backspaces.\n"
             "  For help on setting up ydotool, see ``readme-ydotool.rst`` in the nerd-dictation repository.\n"
@@ -1844,6 +2161,7 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         func=lambda args: main_begin(
             path_to_cookie=args.path_to_cookie,
             vosk_model_dir=args.vosk_model_dir,
+            engine=args.engine,
             pulse_device_name=args.pulse_device_name,
             sample_rate=args.sample_rate,
             input_method=args.input_method,

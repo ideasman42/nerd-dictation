@@ -7,3 +7,6 @@ __pycache__/
 
 # Fallback location used for the language model.
 /model
+
+# Test audio recordings.
+tests/test_wavs/*.wav
