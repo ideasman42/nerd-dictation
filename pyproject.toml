@@ -1,3 +1,56 @@
+# Root-level packaging config for `uv tool install .`
+# (or `pip install .` at the repo root).
+#
+# The entire application is a single script (nerd-dictation) at the repo root.
+# Rather than maintain a separate copy inside a Python package directory, we
+# use hatch's force-include to map that script directly into the wheel as
+# nerd_dictation/__init__.py.  This way the script is the single source of
+# truth and there is no duplication.
+#
+# For the ./package/uv variant (used by `uv tool install ./package/uv` or
+# remote subdirectory installs), a custom build hook copies the script at build
+# time instead -- see package/uv/hatch_build.py for details.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nerd-dictation"
+version = "0.1.0"
+description = "Offline Speech to Text for Desktop"
+readme = "readme.rst"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.8"
+maintainers = [
+    {name = "Campbell Barton", email = "ideasman42@gmail.com"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Operating System :: POSIX :: Linux",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+]
+dependencies = [
+    "vosk",
+]
+
+[project.scripts]
+nerd-dictation = "nerd_dictation:main"
+
+[project.urls]
+Repository = "https://github.com/ideasman42/nerd-dictation"
+
+# Force-include maps the single-file script into the wheel as the
+# importable module nerd_dictation/__init__.py.  No tracked copy needed.
+[tool.hatch.build.targets.wheel.force-include]
+"nerd-dictation" = "nerd_dictation/__init__.py"
+
+# The sdist must carry the original script so the wheel builder
+# can find it when building from a source distribution.
+[tool.hatch.build.targets.sdist.force-include]
+"nerd-dictation" = "nerd-dictation"
+
 [tool.black]
 line-length = 119
 target-version = ['py310']

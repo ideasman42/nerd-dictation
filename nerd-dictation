@@ -11,6 +11,7 @@ While it could use any system currently it uses the VOSK-API.
 # All built in modules.
 import argparse
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -39,10 +40,38 @@ USER_CONFIG = "nerd-dictation.py"
 
 SIMULATE_INPUT_CODE_COMMAND = -1
 
+COMMAND_HINTS = {
+    "parec": ("PulseAudio recorder", "pulseaudio-utils"),
+    "sox": ("SoX sound processing", "sox"),
+    "pw-cat": ("PipeWire audio tool", "pipewire"),
+    "xdotool": ("X11 input simulation", "xdotool"),
+    "ydotool": ("input simulation", "ydotool"),
+    "dotool": ("input simulation", "dotool"),
+    "dotoolc": ("input simulation", "dotool"),
+    "wtype": ("Wayland input simulation", "wtype"),
+}
+
 
 # -----------------------------------------------------------------------------
 # General Utilities
 #
+
+
+def command_not_found_message(cmd_name: str) -> str:
+    hint = COMMAND_HINTS.get(cmd_name)
+    if hint:
+        return (
+            "Command {!r} not found.\n"
+            "{!r} is {}, typically in the {!r} package.\n"
+            "Install it using your system package manager.\n"
+        ).format(cmd_name, cmd_name, hint[0], hint[1])
+    return "Command {!r} not found.\n".format(cmd_name)
+
+
+def check_command_or_exit(cmd_name: str) -> None:
+    if shutil.which(cmd_name) is None:
+        sys.stderr.write(command_not_found_message(cmd_name))
+        sys.exit(1)
 
 
 def run_command_or_exit_on_failure(cmd: List[str]) -> None:
@@ -50,8 +79,8 @@ def run_command_or_exit_on_failure(cmd: List[str]) -> None:
         subprocess.check_output(cmd)
     # Don't catch other kinds of exceptions as they should never happen
     # and can be considered a severe error which doesn't need to be made "user friendly".
-    except FileNotFoundError as ex:
-        sys.stderr.write("Command {!r} not found: {!s}\n".format(cmd[0], ex))
+    except FileNotFoundError:
+        sys.stderr.write(command_not_found_message(cmd[0]))
         sys.exit(1)
 
 
@@ -1303,6 +1332,25 @@ def main_begin(
     if not vosk_model_dir:
         vosk_model_dir = calc_user_config_path("model")
         # If this still doesn't exist the error is handled later.
+
+    input_method_to_cmd = {
+        "PAREC": "parec",
+        "SOX": "sox",
+        "PW-CAT": "pw-cat",
+    }
+    simulate_input_tool_to_cmd = {
+        "XDOTOOL": "xdotool",
+        "YDOTOOL": "ydotool",
+        "DOTOOL": "dotool",
+        "DOTOOLC": "dotoolc",
+        "WTYPE": "wtype",
+    }
+
+    check_command_or_exit(input_method_to_cmd[input_method])
+    if output == "SIMULATE_INPUT":
+        simulate_cmd = simulate_input_tool_to_cmd.get(simulate_input_tool)
+        if simulate_cmd is not None:
+            check_command_or_exit(simulate_cmd)
 
     #
     # Initialize the recording state and perform some sanity checks.
