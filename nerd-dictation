@@ -11,24 +11,27 @@ While it could use any system currently it uses the VOSK-API.
 # All built in modules.
 import argparse
 import os
+import shutil
 import stat
 import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
+import zipfile
+from types import (
+    ModuleType,
+)
 
 # Types.
 from typing import (
-    Dict,
     IO,
+    Callable,
+    Dict,
     List,
     Optional,
-    Callable,
     Set,
     Tuple,
-)
-from types import (
-    ModuleType,
 )
 
 TEMP_COOKIE_NAME = "nerd-dictation.cookie"
@@ -39,10 +42,50 @@ USER_CONFIG = "nerd-dictation.py"
 
 SIMULATE_INPUT_CODE_COMMAND = -1
 
+# AIDEV-NOTE: maps external commands to human-readable descriptions for error messages
+SYSTEM_COMMAND_INFO: Dict[str, str] = {
+    "parec": "PulseAudio recorder, typically in the 'pulseaudio-utils' package",
+    "sox": "Sound exchange tool, typically in the 'sox' package",
+    "pw-cat": "PipeWire audio tool, typically in the 'pipewire' package",
+    "xdotool": "X11 input simulator, typically in the 'xdotool' package",
+    "ydotool": "Input simulator (X11/Wayland/TTY), typically in the 'ydotool' package",
+    "dotool": "Input simulator (X11/Wayland/TTY), see https://git.sr.ht/~geb/dotool",
+    "dotoolc": "Dotool daemon client, see https://git.sr.ht/~geb/dotool",
+    "wtype": "Wayland input simulator, typically in the 'wtype' package",
+}
+
+COMMAND_HINTS = {
+    "parec": ("PulseAudio recorder", "pulseaudio-utils"),
+    "sox": ("SoX sound processing", "sox"),
+    "pw-cat": ("PipeWire audio tool", "pipewire"),
+    "xdotool": ("X11 input simulation", "xdotool"),
+    "ydotool": ("input simulation", "ydotool"),
+    "dotool": ("input simulation", "dotool"),
+    "dotoolc": ("input simulation", "dotool"),
+    "wtype": ("Wayland input simulation", "wtype"),
+}
+
 
 # -----------------------------------------------------------------------------
 # General Utilities
 #
+
+
+def command_not_found_message(cmd_name: str) -> str:
+    hint = COMMAND_HINTS.get(cmd_name)
+    if hint:
+        return (
+            "Command {!r} not found.\n"
+            "{!r} is {}, typically in the {!r} package.\n"
+            "Install it using your system package manager.\n"
+        ).format(cmd_name, cmd_name, hint[0], hint[1])
+    return "Command {!r} not found.\n".format(cmd_name)
+
+
+def check_command_or_exit(cmd_name: str) -> None:
+    if shutil.which(cmd_name) is None:
+        sys.stderr.write(command_not_found_message(cmd_name))
+        sys.exit(1)
 
 
 def run_command_or_exit_on_failure(cmd: List[str]) -> None:
@@ -50,8 +93,8 @@ def run_command_or_exit_on_failure(cmd: List[str]) -> None:
         subprocess.check_output(cmd)
     # Don't catch other kinds of exceptions as they should never happen
     # and can be considered a severe error which doesn't need to be made "user friendly".
-    except FileNotFoundError as ex:
-        sys.stderr.write("Command {!r} not found: {!s}\n".format(cmd[0], ex))
+    except FileNotFoundError:
+        sys.stderr.write(command_not_found_message(cmd[0]))
         sys.exit(1)
 
 
@@ -99,7 +142,9 @@ def file_handle_make_non_blocking(file_handle: IO[bytes]) -> None:
     fcntl.fcntl(file_handle, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
 
-def execfile(filepath: str, mod: Optional[ModuleType] = None) -> Optional[ModuleType]:
+def execfile(
+    filepath: str, mod: Optional[ModuleType] = None
+) -> Optional[ModuleType]:
     """
     Execute a file path as a Python script.
     """
@@ -220,7 +265,9 @@ def simulate_typing_with_dotoolc(delete_prev_chars: int, text: str) -> None:
     simulate_typing_with_dotool(delete_prev_chars, text, cmd="dotoolc")
 
 
-def simulate_typing_with_dotool(delete_prev_chars: int, text: str, cmd: str = "dotool") -> None:
+def simulate_typing_with_dotool(
+    delete_prev_chars: int, text: str, cmd: str = "dotool"
+) -> None:
     if delete_prev_chars == SIMULATE_INPUT_CODE_COMMAND:
         global simulate_typing_with_dotool_proc
         if text == "SETUP":
@@ -229,9 +276,20 @@ def simulate_typing_with_dotool(delete_prev_chars: int, text: str, cmd: str = "d
             # "text" was added as a more readable alias for
             # "universal_newlines" in Python 3.7 so use universal_newlines for
             # Python 3.6 compatibility:
-            proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, universal_newlines=True)
+            try:
+                proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, universal_newlines=True)
+            except FileNotFoundError:
+                sys.stderr.write("Command {!r} not found.\n".format(cmd))
+                info = SYSTEM_COMMAND_INFO.get(cmd)
+                if info:
+                    sys.stderr.write("  {!r} is {}.\n".format(cmd, info))
+                sys.stderr.write("  Install it using your system package manager.\n")
+                sys.exit(1)
+
             assert proc.stdin is not None
-            proc.stdin.write("keydelay 4\nkeyhold 0\ntypedelay 12\ntypehold 0\n")
+            proc.stdin.write(
+                "keydelay 4\nkeyhold 0\ntypedelay 12\ntypehold 0\n"
+            )
             proc.stdin.flush()
             simulate_typing_with_dotool_proc = proc
         elif text == "TEARDOWN":
@@ -338,10 +396,16 @@ def user_config_as_module_or_none(
     try:
         user_config = execfile(user_config_path)
     except Exception as ex:
-        sys.stderr.write('Failed to run "{:s}" with error: {:s}\n'.format(user_config_path, str(ex)))
+        sys.stderr.write(
+            'Failed to run "{:s}" with error: {:s}\n'.format(
+                user_config_path, str(ex)
+            )
+        )
         if user_config_prev is not None:
             # Reloading configuration at run-time, don't exit in this case - use the previous config instead.
-            sys.stderr.write("Reload failed, continuing with previous configuration.\n")
+            sys.stderr.write(
+                "Reload failed, continuing with previous configuration.\n"
+            )
             user_config = user_config_prev
         else:
             # Exit if the user starts with an invalid configuration.
@@ -356,9 +420,13 @@ def user_config_as_module_or_none(
 # Note this could be extracted into it's own small library.
 
 
-def from_words_to_digits_setup_once() -> (
-    Tuple[Dict[str, Tuple[int, int, str, bool]], Set[str], Set[str], Set[str], Set[str]]
-):
+def from_words_to_digits_setup_once() -> Tuple[
+    Dict[str, Tuple[int, int, str, bool]],
+    Set[str],
+    Set[str],
+    Set[str],
+    Set[str],
+]:
     number_words = {}
     # A set of words that can be used to start numeric expressions.
     valid_digit_words: Set[str] = set()
@@ -408,24 +476,117 @@ def from_words_to_digits_setup_once() -> (
         ((("million", ""), ("millions", "s"), ("millionth", "th")), 6),
         ((("billion", ""), ("billions", "s"), ("billionth", "th")), 9),
         ((("trillion", ""), ("trillions", "s"), ("trillionth", "th")), 12),
-        ((("quadrillion", ""), ("quadrillions", "s"), ("quadrillionth", "th")), 15),
-        ((("quintillion", ""), ("quintillions", "s"), ("quintillionth", "th")), 18),
-        ((("sextillion", ""), ("sextillions", "s"), ("sextillionth", "th")), 21),
-        ((("septillion", ""), ("septillions", "s"), ("septillionth", "th")), 24),
+        (
+            (
+                ("quadrillion", ""),
+                ("quadrillions", "s"),
+                ("quadrillionth", "th"),
+            ),
+            15,
+        ),
+        (
+            (
+                ("quintillion", ""),
+                ("quintillions", "s"),
+                ("quintillionth", "th"),
+            ),
+            18,
+        ),
+        (
+            (("sextillion", ""), ("sextillions", "s"), ("sextillionth", "th")),
+            21,
+        ),
+        (
+            (("septillion", ""), ("septillions", "s"), ("septillionth", "th")),
+            24,
+        ),
         ((("octillion", ""), ("octillions", "s"), ("octillionth", "th")), 27),
         ((("nonillion", ""), ("nonillions", "s"), ("nonillionth", "th")), 30),
         ((("decillion", ""), ("decillions", "s"), ("decillionth", "th")), 33),
-        ((("undecillion", ""), ("undecillions", "s"), ("undecillionth", "th")), 36),
-        ((("duodecillion", ""), ("duodecillions", "s"), ("duodecillionth", "th")), 39),
-        ((("tredecillion", ""), ("tredecillions", "s"), ("tredecillionth", "th")), 42),
-        ((("quattuordecillion", ""), ("quattuordecillions", "s"), ("quattuordecillionth", "th")), 45),
-        ((("quindecillion", ""), ("quindecillions", "s"), ("quindecillionth", "th")), 48),
-        ((("sexdecillion", ""), ("sexdecillions", "s"), ("sexdecillionth", "th")), 51),
-        ((("septendecillion", ""), ("septendecillions", "s"), ("septendecillionth", "th")), 54),
-        ((("octodecillion", ""), ("octodecillions", "s"), ("octodecillionth", "th")), 57),
-        ((("novemdecillion", ""), ("novemdecillions", "s"), ("novemdecillionth", "th")), 60),
-        ((("vigintillion", ""), ("vigintillions", "s"), ("vigintillionth", "th")), 63),
-        ((("centillion", ""), ("centillions", "s"), ("centillionth", "th")), 303),
+        (
+            (
+                ("undecillion", ""),
+                ("undecillions", "s"),
+                ("undecillionth", "th"),
+            ),
+            36,
+        ),
+        (
+            (
+                ("duodecillion", ""),
+                ("duodecillions", "s"),
+                ("duodecillionth", "th"),
+            ),
+            39,
+        ),
+        (
+            (
+                ("tredecillion", ""),
+                ("tredecillions", "s"),
+                ("tredecillionth", "th"),
+            ),
+            42,
+        ),
+        (
+            (
+                ("quattuordecillion", ""),
+                ("quattuordecillions", "s"),
+                ("quattuordecillionth", "th"),
+            ),
+            45,
+        ),
+        (
+            (
+                ("quindecillion", ""),
+                ("quindecillions", "s"),
+                ("quindecillionth", "th"),
+            ),
+            48,
+        ),
+        (
+            (
+                ("sexdecillion", ""),
+                ("sexdecillions", "s"),
+                ("sexdecillionth", "th"),
+            ),
+            51,
+        ),
+        (
+            (
+                ("septendecillion", ""),
+                ("septendecillions", "s"),
+                ("septendecillionth", "th"),
+            ),
+            54,
+        ),
+        (
+            (
+                ("octodecillion", ""),
+                ("octodecillions", "s"),
+                ("octodecillionth", "th"),
+            ),
+            57,
+        ),
+        (
+            (
+                ("novemdecillion", ""),
+                ("novemdecillions", "s"),
+                ("novemdecillionth", "th"),
+            ),
+            60,
+        ),
+        (
+            (
+                ("vigintillion", ""),
+                ("vigintillions", "s"),
+                ("vigintillionth", "th"),
+            ),
+            63,
+        ),
+        (
+            (("centillion", ""), ("centillions", "s"), ("centillionth", "th")),
+            303,
+        ),
     )
 
     # Divisors (not final).
@@ -520,7 +681,10 @@ class from_words_to_digits:
 
             # When explicitly stated, the word "zero" should terminate the current number and start a new value.
             # Since it doesn't make sense to say "fifty zero" as it does to say "fifty one".
-            if word_index_final != -1 and word_list[word_index] in valid_zero_words:
+            if (
+                word_index_final != -1
+                and word_list[word_index] in valid_zero_words
+            ):
                 break
 
             # Use the index by the multiplier.
@@ -542,8 +706,13 @@ class from_words_to_digits:
                 # - "twenty twelve"
                 # - "ninety fifty"
                 if scale_final == scale:
-                    if word_list[word_index] in valid_unit_words and word_list[word_index_final] in valid_unit_words:
-                        if not (increment_final_real >= 20 and increment_real < 10):
+                    if (
+                        word_list[word_index] in valid_unit_words
+                        and word_list[word_index_final] in valid_unit_words
+                    ):
+                        if not (
+                            increment_final_real >= 20 and increment_real < 10
+                        ):
                             break
 
             if imply_single_unit:
@@ -566,7 +735,12 @@ class from_words_to_digits:
             word_index += 1
 
             if is_final:
-                result_final = ("{:d}".format(result + current), suffix, word_index, allow_reformat)
+                result_final = (
+                    "{:d}".format(result + current),
+                    suffix,
+                    word_index,
+                    allow_reformat,
+                )
                 word_index_final = word_index
                 scale_final = scale
                 # increment_final = increment
@@ -581,7 +755,12 @@ class from_words_to_digits:
             return result_final
 
         # Return the result plus the current.
-        return "{:d}".format(result + current), suffix, word_index, allow_reformat
+        return (
+            "{:d}".format(result + current),
+            suffix,
+            word_index,
+            allow_reformat,
+        )
 
     @staticmethod
     def _allow_follow_on_word(w_prev: str, w: str) -> bool:
@@ -617,18 +796,22 @@ class from_words_to_digits:
             if w not in number_words:
                 break
 
-            if (i != word_index) and from_words_to_digits._allow_follow_on_word(word_list[i - 1], w):
+            if (i != word_index) and from_words_to_digits._allow_follow_on_word(
+                word_list[i - 1], w
+            ):
                 # Don't set `w_prev` so we can detect "thirteen and fifty five" without the last "five" delimiting.
                 pass
             else:
                 if (w_prev not in {"", "and"}) and w in valid_unit_words:
                     # Exception ... allow "thirty three", two words...
                     result_prev = result_test
-                    result_test = from_words_to_digits._parse_number_as_whole_value(
-                        word_list,
-                        i,  # Limit.
-                        i_span_beg,  # Split start.
-                        force_single_units=True,
+                    result_test = (
+                        from_words_to_digits._parse_number_as_whole_value(
+                            word_list,
+                            i,  # Limit.
+                            i_span_beg,  # Split start.
+                            force_single_units=True,
+                        )
                     )
                     # NOTE: in *almost* all cases this assertion is valid.
                     # `assert i == result_test[2]`.
@@ -671,22 +854,28 @@ class from_words_to_digits:
             w = word_list[i]
             if w not in number_words:
                 break
-            if (i != word_index) and from_words_to_digits._allow_follow_on_word(word_list[i - 1], w):
+            if (i != word_index) and from_words_to_digits._allow_follow_on_word(
+                word_list[i - 1], w
+            ):
                 # Don't set `w_prev` so we can detect "thirteen and fifty five" without the last "five" delimiting.
                 pass
             else:
                 if (w_prev not in {"", "and"}) and w in valid_unit_words:
-                    result_test_lhs = from_words_to_digits._parse_number_as_whole_value(
-                        word_list,
-                        i,  # Limit.
-                        word_index,  # Split start.
-                        force_single_units=True,
+                    result_test_lhs = (
+                        from_words_to_digits._parse_number_as_whole_value(
+                            word_list,
+                            i,  # Limit.
+                            word_index,  # Split start.
+                            force_single_units=True,
+                        )
                     )
-                    result_test_rhs = from_words_to_digits._parse_number_as_whole_value(
-                        word_list,
-                        word_index_len,  # Limit.
-                        i,  # Split start.
-                        force_single_units=True,
+                    result_test_rhs = (
+                        from_words_to_digits._parse_number_as_whole_value(
+                            word_list,
+                            word_index_len,  # Limit.
+                            i,  # Split start.
+                            force_single_units=True,
+                        )
                     )
 
                     # If the number on the right is larger, split here.
@@ -707,15 +896,19 @@ class from_words_to_digits:
         word_list_len = len(word_list)
 
         # Delimit, prevent accumulating "one hundred two hundred" -> "300" for example.
-        word_list_len = from_words_to_digits.parse_number_calc_delimiter_from_series(
-            word_list,
-            word_index,
-            word_list_len,
+        word_list_len = (
+            from_words_to_digits.parse_number_calc_delimiter_from_series(
+                word_list,
+                word_index,
+                word_list_len,
+            )
         )
-        word_list_len = from_words_to_digits.parse_number_calc_delimiter_from_slide(
-            word_list,
-            word_index,
-            word_list_len,
+        word_list_len = (
+            from_words_to_digits.parse_number_calc_delimiter_from_slide(
+                word_list,
+                word_index,
+                word_list_len,
+            )
         )
 
         return from_words_to_digits._parse_number_as_whole_value(
@@ -737,8 +930,10 @@ class from_words_to_digits:
         orig_word_list = word_list.copy()
         while i < len(word_list):
             if word_list[i] in from_words_to_digits.valid_digit_words:
-                number, suffix, i_next, allow_reformat = from_words_to_digits.parse_number(
-                    word_list, i, imply_single_unit=True
+                number, suffix, i_next, allow_reformat = (
+                    from_words_to_digits.parse_number(
+                        word_list, i, imply_single_unit=True
+                    )
                 )
                 if i != i_next:
                     if numbers_no_suffix and suffix:
@@ -746,7 +941,12 @@ class from_words_to_digits:
                         continue
 
                     word_list[i:i_next] = [
-                        ("{:,d}".format(int(number)) if (numbers_use_separator and allow_reformat) else number) + suffix
+                        (
+                            "{:,d}".format(int(number))
+                            if (numbers_use_separator and allow_reformat)
+                            else number
+                        )
+                        + suffix
                     ]
 
                     if (i_number_prev != -1) and (i_number_prev + 1 != i):
@@ -754,17 +954,32 @@ class from_words_to_digits:
                         found = True
                         # While more could be added here, for now this is enough.
                         if words_between == ("point",):
-                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + "." + word_list[i]]
+                            word_list[i_number_prev : i + 1] = [
+                                word_list[i_number_prev] + "." + word_list[i]
+                            ]
                         elif words_between == ("minus",):
-                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + " - " + word_list[i]]
+                            word_list[i_number_prev : i + 1] = [
+                                word_list[i_number_prev] + " - " + word_list[i]
+                            ]
                         elif words_between == ("plus",):
-                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + " + " + word_list[i]]
+                            word_list[i_number_prev : i + 1] = [
+                                word_list[i_number_prev] + " + " + word_list[i]
+                            ]
                         elif words_between == ("divided", "by"):
-                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + " / " + word_list[i]]
-                        elif words_between in {("multiplied", "by"), ("times",)}:
-                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + " * " + word_list[i]]
+                            word_list[i_number_prev : i + 1] = [
+                                word_list[i_number_prev] + " / " + word_list[i]
+                            ]
+                        elif words_between in {
+                            ("multiplied", "by"),
+                            ("times",),
+                        }:
+                            word_list[i_number_prev : i + 1] = [
+                                word_list[i_number_prev] + " * " + word_list[i]
+                            ]
                         elif words_between == ("modulo",):
-                            word_list[i_number_prev : i + 1] = [word_list[i_number_prev] + " % " + word_list[i]]
+                            word_list[i_number_prev : i + 1] = [
+                                word_list[i_number_prev] + " % " + word_list[i]
+                            ]
                         else:
                             found = False
 
@@ -790,7 +1005,10 @@ class from_words_to_digits:
                 if i + 1 != j:
                     word_list[i:j] = ["".join(word_list[i:j])]
                     orig_word_list[i:j] = ["".join(orig_word_list[i:j])]
-                if numbers_min_value is not None and int(word_list[i]) < numbers_min_value:
+                if (
+                    numbers_min_value is not None
+                    and int(word_list[i]) < numbers_min_value
+                ):
                     word_list[i:j] = orig_word_list[i:j]
 
                 i = j
@@ -807,17 +1025,25 @@ def process_text_with_user_config(user_config: ModuleType, text: str) -> str:
     process_fn_name = "nerd_dictation_process"
     process_fn = getattr(user_config, process_fn_name)
     if process_fn is None:
-        sys.stderr.write("User configuration %r has no %r function\n" % (user_config, process_fn_name))
+        sys.stderr.write(
+            "User configuration %r has no %r function\n"
+            % (user_config, process_fn_name)
+        )
         return text
 
     try:
         text = process_fn(text)
     except Exception as ex:
-        sys.stderr.write("Failed to run %r with error %s\n" % (user_config, str(ex)))
+        sys.stderr.write(
+            "Failed to run %r with error %s\n" % (user_config, str(ex))
+        )
         sys.exit(1)
 
     if not isinstance(text, str):
-        sys.stderr.write("%r returned a %r type, instead of a string\n" % (process_fn_name, type(text)))
+        sys.stderr.write(
+            "%r returned a %r type, instead of a string\n"
+            % (process_fn_name, type(text))
+        )
         sys.exit(1)
 
     return text
@@ -876,7 +1102,11 @@ def recording_proc_with_non_blocking_stdout(
             "--record",
             "--rate=%d" % sample_rate,
             "--channels=1",
-            *(("--device=%s" % pulse_device_name,) if pulse_device_name else ()),
+            *(
+                ("--device=%s" % pulse_device_name,)
+                if pulse_device_name
+                else ()
+            ),
             "--format=s16ne",
             "--latency=10",
         )
@@ -915,7 +1145,16 @@ def recording_proc_with_non_blocking_stdout(
         sys.stderr.write("--input %r not supported.\n" % input_method)
         sys.exit(1)
 
-    ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    try:
+        ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    except FileNotFoundError:
+        sys.stderr.write("Command {!r} not found.\n".format(cmd[0]))
+        info = SYSTEM_COMMAND_INFO.get(cmd[0])
+        if info:
+            sys.stderr.write("  {!r} is {}.\n".format(cmd[0], info))
+        sys.stderr.write("  Install it using your system package manager.\n")
+        sys.exit(1)
+
     stdout = ps.stdout
     assert stdout is not None
 
@@ -948,13 +1187,17 @@ def text_from_vosk_pipe(
     if not os.path.exists(vosk_model_dir):
         sys.stderr.write(
             "Please download the model from "
-            "https://alphacephei.com/vosk/models and unpack it to {!r}.\n".format(vosk_model_dir)
+            "https://alphacephei.com/vosk/models and unpack it to {!r}.\n".format(
+                vosk_model_dir
+            )
         )
         sys.exit(1)
 
     # NOTE: typed as a string for Py3.6 compatibility.
     def recording_proc_start() -> "Tuple[subprocess.Popen[bytes], IO[bytes]]":
-        return recording_proc_with_non_blocking_stdout(input_method, sample_rate, pulse_device_name)
+        return recording_proc_with_non_blocking_stdout(
+            input_method, sample_rate, pulse_device_name
+        )
 
     has_ps = False
     if not suspend_on_start:
@@ -1079,7 +1322,9 @@ def text_from_vosk_pipe(
             handle_fn_wrapper(text, False)
         return json_text
 
-    def rec_handle_fn_wrapper_from_partial_result(json_text_partial_prev: str) -> Tuple[str, str]:
+    def rec_handle_fn_wrapper_from_partial_result(
+        json_text_partial_prev: str,
+    ) -> Tuple[str, str]:
         json_text = rec.PartialResult()
         # Without this, there are *many* calls with the same partial text.
         if json_text_partial_prev != json_text:
@@ -1144,7 +1389,9 @@ def text_from_vosk_pipe(
         ps, stdout = recording_proc_start()
         has_ps = True
 
-    def handle_sig_suspend_from_usr1(_signum: int, _frame: Optional[FrameType]) -> None:
+    def handle_sig_suspend_from_usr1(
+        _signum: int, _frame: Optional[FrameType]
+    ) -> None:
         nonlocal suspend
         if suspend:
             return
@@ -1154,13 +1401,17 @@ def text_from_vosk_pipe(
         # `signal.raise_signal(signal.SIGSTOP)`
         os.kill(os.getpid(), signal.SIGSTOP)
 
-    def handle_sig_resume_from_cont(_signum: int, _frame: Optional[FrameType]) -> None:
+    def handle_sig_resume_from_cont(
+        _signum: int, _frame: Optional[FrameType]
+    ) -> None:
         nonlocal suspend
         if not suspend:
             return
         suspend = False
 
-    def handle_sig_reload_from_hup(_signum: int, _frame: Optional[FrameType]) -> None:
+    def handle_sig_reload_from_hup(
+        _signum: int, _frame: Optional[FrameType]
+    ) -> None:
         if verbose >= 1:
             sys.stderr.write("Reload.\n")
         process_fn("")
@@ -1230,7 +1481,11 @@ def text_from_vosk_pipe(
                 json_text_partial_prev = ""
                 json_text = rec_handle_fn_wrapper_from_final_result()
             else:
-                json_text, json_text_partial_prev = rec_handle_fn_wrapper_from_partial_result(json_text_partial_prev)
+                json_text, json_text_partial_prev = (
+                    rec_handle_fn_wrapper_from_partial_result(
+                        json_text_partial_prev
+                    )
+                )
 
             # Monitor the partial output.
             # Finish if no changes are made for `timeout` seconds.
@@ -1264,6 +1519,277 @@ def text_from_vosk_pipe(
         handle_fn(0, process_fn(" ".join(text_list)))
 
     return handled_any
+
+# -----------------------------------------------------------------------------
+# Model Download
+#
+
+VOSK_MODELS_URL = "https://alphacephei.com/vosk/models"
+
+# AIDEV-NOTE: fallback catalog used when the model page cannot be fetched
+MODEL_CATALOG_FALLBACK: List[Dict[str, str]] = [
+    {"name": "vosk-model-small-en-us-0.15", "lang": "English (US)", "size": "40M", "notes": "Lightweight, recommended for desktop"},
+    {"name": "vosk-model-en-us-0.22", "lang": "English (US)", "size": "1.8G", "notes": "Accurate generic US English model"},
+    {"name": "vosk-model-en-us-0.22-lgraph", "lang": "English (US)", "size": "128M", "notes": "Big model with dynamic graph"},
+    {"name": "vosk-model-en-us-0.42-gigaspeech", "lang": "English (US)", "size": "2.3G", "notes": "Accurate model trained on Gigaspeech"},
+    {"name": "vosk-model-small-en-in-0.4", "lang": "English (Indian)", "size": "36M", "notes": "Lightweight Indian English model"},
+    {"name": "vosk-model-en-in-0.5", "lang": "English (Indian)", "size": "1G", "notes": "Generic Indian English model"},
+    {"name": "vosk-model-small-cn-0.22", "lang": "Chinese", "size": "42M", "notes": "Lightweight model"},
+    {"name": "vosk-model-cn-0.22", "lang": "Chinese", "size": "1.3G", "notes": "Big generic Chinese model"},
+    {"name": "vosk-model-small-ru-0.22", "lang": "Russian", "size": "45M", "notes": "Lightweight model"},
+    {"name": "vosk-model-ru-0.42", "lang": "Russian", "size": "1.8G", "notes": "Big mixed band model"},
+    {"name": "vosk-model-small-fr-0.22", "lang": "French", "size": "41M", "notes": "Lightweight model"},
+    {"name": "vosk-model-fr-0.22", "lang": "French", "size": "1.4G", "notes": "Big accurate model"},
+    {"name": "vosk-model-small-de-0.15", "lang": "German", "size": "45M", "notes": "Lightweight model"},
+    {"name": "vosk-model-de-0.21", "lang": "German", "size": "1.9G", "notes": "Big model for telephony and server"},
+    {"name": "vosk-model-small-es-0.42", "lang": "Spanish", "size": "39M", "notes": "Lightweight model"},
+    {"name": "vosk-model-es-0.42", "lang": "Spanish", "size": "1.4G", "notes": "Big model"},
+    {"name": "vosk-model-small-pt-0.3", "lang": "Portuguese", "size": "31M", "notes": "Lightweight model"},
+    {"name": "vosk-model-small-it-0.22", "lang": "Italian", "size": "48M", "notes": "Lightweight model"},
+    {"name": "vosk-model-it-0.22", "lang": "Italian", "size": "1.2G", "notes": "Big generic Italian model"},
+    {"name": "vosk-model-small-nl-0.22", "lang": "Dutch", "size": "39M", "notes": "Lightweight model"},
+    {"name": "vosk-model-small-ja-0.22", "lang": "Japanese", "size": "48M", "notes": "Lightweight model"},
+    {"name": "vosk-model-ja-0.22", "lang": "Japanese", "size": "1G", "notes": "Big model"},
+    {"name": "vosk-model-small-ko-0.22", "lang": "Korean", "size": "82M", "notes": "Lightweight model"},
+    {"name": "vosk-model-small-tr-0.3", "lang": "Turkish", "size": "35M", "notes": "Lightweight model"},
+    {"name": "vosk-model-small-vn-0.4", "lang": "Vietnamese", "size": "32M", "notes": "Lightweight model"},
+    {"name": "vosk-model-vn-0.4", "lang": "Vietnamese", "size": "78M", "notes": "Bigger model"},
+    {"name": "vosk-model-small-fa-0.42", "lang": "Farsi", "size": "53M", "notes": "Lightweight model"},
+    {"name": "vosk-model-fa-0.42", "lang": "Farsi", "size": "1.6G", "notes": "Big model"},
+    {"name": "vosk-model-small-el-gr-0.7", "lang": "Greek", "size": "N/A", "notes": "Big narrowband model (not small despite naming)"},
+    {"name": "vosk-model-small-pl-0.22", "lang": "Polish", "size": "50M", "notes": "Lightweight model"},
+    {"name": "vosk-model-small-cs-0.4-rhasspy", "lang": "Czech", "size": "44M", "notes": "Lightweight model"},
+    {"name": "vosk-model-small-hi-0.22", "lang": "Hindi", "size": "42M", "notes": "Lightweight model"},
+    {"name": "vosk-model-hi-0.22", "lang": "Hindi", "size": "1.5G", "notes": "Big model"},
+    {"name": "vosk-model-small-uk-v3-nano", "lang": "Ukrainian", "size": "73M", "notes": "Nano model"},
+    {"name": "vosk-model-uk-v3", "lang": "Ukrainian", "size": "343M", "notes": "Bigger model"},
+    {"name": "vosk-model-small-sv-rhasspy-0.15", "lang": "Swedish", "size": "289M", "notes": "Repackaged Rhasspy model"},
+    {"name": "vosk-model-small-eo-0.42", "lang": "Esperanto", "size": "42M", "notes": "Lightweight model"},
+    {"name": "vosk-model-small-ar-tn-0.1-linto", "lang": "Arabic (Tunisian)", "size": "158M", "notes": "Small model from Linagora"},
+    {"name": "vosk-model-ar-mgb2-0.4", "lang": "Arabic", "size": "318M", "notes": "Repackaged MGB2 model"},
+    {"name": "vosk-model-small-ca-0.4", "lang": "Catalan", "size": "42M", "notes": "Lightweight model"},
+    {"name": "vosk-model-small-uz-0.22", "lang": "Uzbek", "size": "49M", "notes": "Lightweight model"},
+    {"name": "vosk-model-small-kz-0.42", "lang": "Kazakh", "size": "58M", "notes": "Small mobile model"},
+    {"name": "vosk-model-kz-0.42", "lang": "Kazakh", "size": "1.3G", "notes": "Bigger model"},
+    {"name": "vosk-model-small-gu-0.42", "lang": "Gujarati", "size": "100M", "notes": "Lightweight model"},
+    {"name": "vosk-model-gu-0.42", "lang": "Gujarati", "size": "700M", "notes": "Big model"},
+    {"name": "vosk-model-small-te-0.42", "lang": "Telugu", "size": "58M", "notes": "Lightweight model"},
+    {"name": "vosk-model-br-0.8", "lang": "Breton", "size": "70M", "notes": "Breton model"},
+]
+
+
+def _fetch_model_catalog() -> Optional[List[Dict[str, str]]]:
+    import re
+
+    try:
+        with urllib.request.urlopen(VOSK_MODELS_URL, timeout=10) as resp:
+            html = resp.read().decode("utf-8")
+    except Exception:
+        return None
+
+    models: List[Dict[str, str]] = []
+    current_lang = ""
+
+    for row_match in re.finditer(r"<tr>(.*?)</tr>", html, re.DOTALL):
+        row = row_match.group(1)
+        cells = re.findall(r"<td[^>]*>(.*?)</td>", row, re.DOTALL)
+
+        if not cells:
+            continue
+
+        first_cell = cells[0].strip()
+
+        # Language header rows contain <strong> tags and no links
+        strong_match = re.search(r"<strong>(.*?)</strong>", first_cell)
+        link_match = re.search(r'<a\s+href="([^"]+)">(.*?)</a>', first_cell)
+
+        if strong_match and not link_match:
+            current_lang = re.sub(r"<.*?>", "", strong_match.group(1)).strip()
+            continue
+
+        if not link_match or len(cells) < 2:
+            continue
+
+        model_name = re.sub(r"<.*?>", "", link_match.group(2)).strip()
+        model_url = link_match.group(1).strip()
+        size = re.sub(r"<.*?>", "", cells[1]).strip()
+        notes = re.sub(r"<.*?>", "", cells[3]).strip() if len(cells) > 3 else ""
+
+        if not model_name.startswith("vosk-model-"):
+            continue
+
+        models.append({
+            "name": model_name,
+            "lang": current_lang,
+            "size": size,
+            "notes": notes,
+            "url": model_url,
+        })
+
+    return models if models else None
+
+
+def _get_model_catalog(verbose: int = 0) -> List[Dict[str, str]]:
+    if verbose >= 1:
+        sys.stderr.write("Fetching model list from " + VOSK_MODELS_URL + " ...\n")
+    fetched = _fetch_model_catalog()
+    if fetched is not None:
+        return fetched
+    sys.stderr.write("Could not fetch model list, using built-in catalog.\n")
+    return MODEL_CATALOG_FALLBACK
+
+
+def main_download_model(
+    *,
+    model_name: Optional[str] = None,
+    vosk_model_dir: str = "",
+    list_only: bool = False,
+) -> None:
+    catalog = _get_model_catalog()
+
+    if list_only:
+        print("Available VOSK models:\n")
+        print("  {:<4s} {:<35s} {:<20s} {:<8s} {}".format("#", "Model", "Language", "Size", "Notes"))
+        print("  " + "-" * 95)
+        for i, m in enumerate(catalog, 1):
+            print("  {:<4d} {:<35s} {:<20s} {:<8s} {}".format(i, m["name"], m["lang"], m["size"], m["notes"]))
+        print("\nFor more models see: " + VOSK_MODELS_URL)
+        return
+
+    if not model_name:
+        print("Available VOSK models:\n")
+        print("  {:<4s} {:<35s} {:<20s} {:<8s} {}".format("#", "Model", "Language", "Size", "Notes"))
+        print("  " + "-" * 95)
+        for i, m in enumerate(catalog, 1):
+            print("  {:<4d} {:<35s} {:<20s} {:<8s} {}".format(i, m["name"], m["lang"], m["size"], m["notes"]))
+        print()
+
+        while True:
+            choice = input("Enter model number to download (or 'q' to quit): ").strip()
+            if choice.lower() == "q":
+                return
+            try:
+                idx = int(choice) - 1
+            except ValueError:
+                print("Invalid input. Enter a number or 'q' to quit.")
+                continue
+            if idx < 0 or idx >= len(catalog):
+                print("Number out of range. Choose 1-{}.".format(len(catalog)))
+                continue
+            break
+        model_entry = catalog[idx]
+    else:
+        matches = [m for m in catalog if m["name"] == model_name]
+        if not matches:
+            sys.stderr.write("Unknown model: {!r}\n".format(model_name))
+            sys.stderr.write("Use --list to see available models.\n")
+            sys.exit(1)
+        model_entry = matches[0]
+
+    model_name = model_entry["name"]
+    model_url = model_entry.get("url", VOSK_MODELS_URL + "/" + model_name + ".zip")
+
+    if not vosk_model_dir:
+        vosk_model_dir = calc_user_config_path("model")
+
+    dest_dir = os.path.dirname(vosk_model_dir)
+    if not os.path.isdir(dest_dir):
+        os.makedirs(dest_dir, exist_ok=True)
+
+    # AIDEV-NOTE: if a model directory already exists, back it up rather than overwrite
+    if os.path.exists(vosk_model_dir):
+        backup = vosk_model_dir + ".old"
+        if os.path.exists(backup):
+            shutil.rmtree(backup)
+        shutil.move(vosk_model_dir, backup)
+        print("Existing model backed up to: " + backup)
+
+    print("Downloading " + model_name + "...")
+    print("  URL: " + model_url)
+
+    tmp_zip = os.path.join(tempfile.gettempdir(), model_name + ".zip")
+    try:
+        urllib.request.urlretrieve(model_url, tmp_zip)
+    except Exception as ex:
+        sys.stderr.write("Download failed: {!s}\n".format(ex))
+        file_remove_if_exists(tmp_zip)
+        sys.exit(1)
+
+    print("Extracting...")
+    try:
+        with zipfile.ZipFile(tmp_zip, "r") as zf:
+            extract_dir = os.path.dirname(vosk_model_dir) if os.path.dirname(vosk_model_dir) else "."
+            zf.extractall(path=extract_dir)
+    except Exception as ex:
+        sys.stderr.write("Extraction failed: {!s}\n".format(ex))
+        file_remove_if_exists(tmp_zip)
+        sys.exit(1)
+    finally:
+        file_remove_if_exists(tmp_zip)
+
+    # The zip extracts as e.g. "vosk-model-small-en-us-0.15/", rename to expected path.
+    extracted_path = os.path.join(os.path.dirname(vosk_model_dir) or ".", model_name)
+    if os.path.exists(extracted_path) and extracted_path != vosk_model_dir:
+        if os.path.exists(vosk_model_dir):
+            shutil.rmtree(vosk_model_dir)
+        shutil.move(extracted_path, vosk_model_dir)
+
+    print("Model installed to: " + vosk_model_dir)
+
+
+def argparse_create_download_model(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+    subparse = subparsers.add_parser(
+        "download-model",
+        help="Download a VOSK speech recognition model.",
+        description=(
+            "Download a VOSK speech recognition model.\n"
+            "\n"
+            "Run without arguments to see available models and choose interactively.\n"
+            "Use --list to print the model table without downloading."
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+
+    subparse.add_argument(
+        "--model",
+        dest="model_name",
+        default=None,
+        type=str,
+        metavar="MODEL_NAME",
+        help=(
+            "Name of the model to download (e.g. vosk-model-small-en-us-0.15).\n"
+            "If omitted, an interactive list is presented."
+        ),
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--vosk-model-dir",
+        dest="vosk_model_dir",
+        default="",
+        type=str,
+        metavar="DIR",
+        help="Path to install the model to. Defaults to ~/.config/nerd-dictation/model.",
+        required=False,
+    )
+
+    subparse.add_argument(
+        "--list",
+        dest="list_only",
+        action="store_true",
+        default=False,
+        help="List available models without downloading.",
+    )
+
+    subparse.set_defaults(
+        func=lambda args: main_download_model(
+            model_name=args.model_name,
+            vosk_model_dir=args.vosk_model_dir,
+            list_only=args.list_only,
+        ),
+    )
+
+
 
 
 def main_begin(
@@ -1304,6 +1830,25 @@ def main_begin(
         vosk_model_dir = calc_user_config_path("model")
         # If this still doesn't exist the error is handled later.
 
+    input_method_to_cmd = {
+        "PAREC": "parec",
+        "SOX": "sox",
+        "PW-CAT": "pw-cat",
+    }
+    simulate_input_tool_to_cmd = {
+        "XDOTOOL": "xdotool",
+        "YDOTOOL": "ydotool",
+        "DOTOOL": "dotool",
+        "DOTOOLC": "dotoolc",
+        "WTYPE": "wtype",
+    }
+
+    check_command_or_exit(input_method_to_cmd[input_method])
+    if output == "SIMULATE_INPUT":
+        simulate_cmd = simulate_input_tool_to_cmd.get(simulate_input_tool)
+        if simulate_cmd is not None:
+            check_command_or_exit(simulate_cmd)
+
     #
     # Initialize the recording state and perform some sanity checks.
     #
@@ -1317,7 +1862,9 @@ def main_begin(
             age_in_seconds = file_age_in_seconds(path_to_cookie)
         except FileNotFoundError:
             age_in_seconds = None
-        is_run_on = age_in_seconds is not None and (age_in_seconds < punctuate_from_previous_timeout)
+        is_run_on = age_in_seconds is not None and (
+            age_in_seconds < punctuate_from_previous_timeout
+        )
         del age_in_seconds
 
     # Write the PID, needed for suspend/resume sub-commands to know the PID of the current process.
@@ -1329,7 +1876,9 @@ def main_begin(
     touch(path_to_cookie, mtime=0)
     cookie_timestamp = file_mtime_or_none(path_to_cookie)
     if cookie_timestamp != 0:
-        sys.stderr.write("Cookie removed after right after creation (unlikely but respect the request)\n")
+        sys.stderr.write(
+            "Cookie removed after right after creation (unlikely but respect the request)\n"
+        )
         return
 
     #
@@ -1374,7 +1923,9 @@ def main_begin(
         # text=="" indicates that user_config should be reloaded (SIGHUP)
         #
         if process_fn_is_first or text == "":
-            user_config = user_config_as_module_or_none(config_override=config_override, user_config_prev=user_config)
+            user_config = user_config_as_module_or_none(
+                config_override=config_override, user_config_prev=user_config
+            )
 
         if not text:
             return ""
@@ -1425,7 +1976,11 @@ def main_begin(
         elif simulate_input_tool == "STDOUT":
             handle_fn = simulate_typing_with_stdout
         else:
-            raise Exception("Internal error, unknown input tool: {!r}".format(simulate_input_tool))
+            raise Exception(
+                "Internal error, unknown input tool: {!r}".format(
+                    simulate_input_tool
+                )
+            )
 
     elif output == "STDOUT":
 
@@ -1505,7 +2060,11 @@ def main_suspend(
 
     if not os.path.exists(path_to_cookie):
         if verbose >= 1:
-            sys.stderr.write("No running nerd-dictation cookie found at: {:s}, abort!\n".format(path_to_cookie))
+            sys.stderr.write(
+                "No running nerd-dictation cookie found at: {:s}, abort!\n".format(
+                    path_to_cookie
+                )
+            )
         return
 
     with open(path_to_cookie, "r", encoding="utf-8") as fh:
@@ -1514,7 +2073,9 @@ def main_suspend(
         pid = int(data)
     except Exception as ex:
         if verbose >= 1:
-            sys.stderr.write("Failed to read PID with error {!r}, abort!\n".format(ex))
+            sys.stderr.write(
+                "Failed to read PID with error {!r}, abort!\n".format(ex)
+            )
         return
 
     if suspend:
@@ -1535,7 +2096,9 @@ def argparse_generic_command_cookie(subparse: argparse.ArgumentParser) -> None:
     )
 
 
-def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+def argparse_create_begin(
+    subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]",
+) -> None:
     subparse = subparsers.add_parser(
         "begin",
         help="Begin dictation.",
@@ -1567,7 +2130,9 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         dest="vosk_model_dir",
         type=str,
         metavar="DIR",
-        help=("Path to the VOSK model, see: https://alphacephei.com/vosk/models"),
+        help=(
+            "Path to the VOSK model, see: https://alphacephei.com/vosk/models"
+        ),
         required=False,
     )
 
@@ -1604,7 +2169,9 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
         default=44100,
         type=int,
         metavar="HZ",
-        help=("The sample rate to use for recording (in Hz).\n" "Defaults to 44100."),
+        help=(
+            "The sample rate to use for recording (in Hz).\nDefaults to 44100."
+        ),
         required=False,
     )
 
@@ -1868,7 +2435,9 @@ def argparse_create_begin(subparsers: "argparse._SubParsersAction[argparse.Argum
     )
 
 
-def argparse_create_end(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+def argparse_create_end(
+    subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]",
+) -> None:
     subparse = subparsers.add_parser(
         "end",
         help="End dictation.",
@@ -1887,7 +2456,9 @@ This ends dictation, causing the text to be typed in.
     )
 
 
-def argparse_create_cancel(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+def argparse_create_cancel(
+    subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]",
+) -> None:
     subparse = subparsers.add_parser(
         "cancel",
         help="Cancel dictation.",
@@ -1904,7 +2475,9 @@ def argparse_create_cancel(subparsers: "argparse._SubParsersAction[argparse.Argu
     )
 
 
-def argparse_create_suspend(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+def argparse_create_suspend(
+    subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]",
+) -> None:
     subparse = subparsers.add_parser(
         "suspend",
         help="Suspend the dictation process.",
@@ -1928,7 +2501,9 @@ def argparse_create_suspend(subparsers: "argparse._SubParsersAction[argparse.Arg
     )
 
 
-def argparse_create_resume(subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+def argparse_create_resume(
+    subparsers: "argparse._SubParsersAction[argparse.ArgumentParser]",
+) -> None:
     subparse = subparsers.add_parser(
         "resume",
         help="Resume the dictation process.",
@@ -1953,7 +2528,9 @@ def argparse_create_resume(subparsers: "argparse._SubParsersAction[argparse.Argu
 
 
 def argparse_create() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
 
     subparsers = parser.add_subparsers()
 
@@ -1964,6 +2541,7 @@ def argparse_create() -> argparse.ArgumentParser:
 
     argparse_create_suspend(subparsers)
     argparse_create_resume(subparsers)
+    argparse_create_download_model(subparsers)
 
     return parser
 

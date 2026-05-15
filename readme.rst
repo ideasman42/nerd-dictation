@@ -71,10 +71,18 @@ See ``nerd-dictation begin --help`` for details on how to access these options.
 Dependencies
 ============
 
-- Python 3.6 (or newer).
-- The VOSK-API.
+- Python 3.8 (or newer).
+- The VOSK-API (installed automatically with ``uv tool install``).
 - An audio recording utility (``parec`` by default).
 - An input simulation utility (``xdotool`` by default).
+
+All external commands are validated at runtime with helpful error messages
+indicating which package to install. If a required command is missing you will
+see a message like::
+
+   Command 'parec' not found.
+   'parec' is PulseAudio recorder, typically in the 'pulseaudio-utils' package.
+   Install it using your system package manager.
 
 
 Audio Recording Utilities
@@ -102,39 +110,61 @@ You may select one of the following input simulation utilities.
 Install
 =======
 
+Using ``uv`` (recommended):
+
 .. code-block:: sh
 
-   pip3 install vosk
+   uv tool install git+https://github.com/ideasman42/nerd-dictation.git
+
+Or from a local clone:
+
+.. code-block:: sh
+
    git clone https://github.com/ideasman42/nerd-dictation.git
    cd nerd-dictation
-   wget https://alphacephei.com/kaldi/models/vosk-model-small-en-us-0.15.zip
-   unzip vosk-model-small-en-us-0.15.zip
-   mv vosk-model-small-en-us-0.15 model
+   uv tool install .
+
+Or using ``pip``:
+
+.. code-block:: sh
+
+   git clone https://github.com/ideasman42/nerd-dictation.git
+   cd nerd-dictation
+   pip install .
+
+Then download a VOSK model:
+
+.. code-block:: sh
+
+   nerd-dictation download-model
+
+This presents an interactive list of available models. You can also specify a model directly:
+
+.. code-block:: sh
+
+   nerd-dictation download-model --model vosk-model-small-en-us-0.15
+
+Or list available models without downloading:
+
+.. code-block:: sh
+
+   nerd-dictation download-model --list
 
 To test dictation:
 
 .. code-block:: sh
 
-   ./nerd-dictation begin --vosk-model-dir=./model &
+   nerd-dictation begin &
    # Start speaking.
-   ./nerd-dictation end
-
+   nerd-dictation end
 
 - Reminder that it's up to you to bind begin/end/cancel to actions you can easily access (typically key shortcuts).
-- To avoid having to pass the ``--vosk-model-dir`` argument, copy the model to the default path:
-
-  .. code-block:: sh
-
-     mkdir -p ~/.config/nerd-dictation
-     mv ./model ~/.config/nerd-dictation
+- ``--vosk-model-dir`` defaults to ``~/.config/nerd-dictation/model``.
 
 .. hint::
 
    Once this is working properly you may wish to download one of the larger language models for more accurate dictation.
    They are available `here <https://alphacephei.com/vosk/models>`__.
-
-
-If you prefer to use a package, see: `Packaging <package/readme.rst>`_.
 
 
 Configuration

@@ -5,5 +5,8 @@
 __pycache__/
 *.py[cod]
 
+# Build/distribution artifacts.
+dist/
+
 # Fallback location used for the language model.
 /model

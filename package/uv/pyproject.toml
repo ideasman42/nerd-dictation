@@ -1,0 +1,69 @@
+# Packaging config for `uv tool install ./package/uv`.
+#
+# nerd-dictation is a single-file script at the repo root.  This config builds
+# it into an installable Python package by:
+#
+#   1. A custom build hook (hatch_build.py) locates ../../nerd-dictation (or
+#      ./nerd-dictation inside an sdist) and injects it into the wheel as
+#      nerd_dictation/__init__.py via build_data["force_include"].  No tracked
+#      copy of the source code exists in this directory.
+#
+#   2. The sdist bundles the original script alongside pyproject.toml and
+#      hatch_build.py so that building from a source distribution also works
+#      (the hook detects the relocated file at ./nerd-dictation).
+#
+#   3. The entry point `nerd_dictation:main` maps to the `main()` function in
+#      that injected __init__.py, which is identical to the root script.
+#
+# For the root-level pyproject.toml (used by `uv tool install .`), a simpler
+# approach is used: force-include maps the script directly into the wheel
+# without any build hook, since the file is already in the project root.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nerd-dictation"
+version = "0.1.0"
+description = "Offline Speech to Text for Desktop"
+readme = "readme.rst"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.8"
+maintainers = [
+    {name = "Campbell Barton", email = "ideasman42@gmail.com"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Operating System :: POSIX :: Linux",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+]
+dependencies = [
+    "vosk",
+]
+
+# Entry point calls main() from the single-file script
+# (injected into the wheel as nerd_dictation/__init__.py by hatch_build.py).
+[project.scripts]
+nerd-dictation = "nerd_dictation:main"
+
+[project.urls]
+Repository = "https://github.com/ideasman42/nerd-dictation"
+
+# The sdist must include the original script so the wheel builder
+# (which runs inside the sdist) can find it.  hatch_build.py detects whether
+# the script lives at ../../nerd-dictation (source tree) or at ./nerd-dictation
+# (inside an sdist) and injects it via force_include either way.
+[tool.hatch.build.targets.sdist]
+force-include = {"../../nerd-dictation" = "nerd-dictation"}
+include = ["pyproject.toml", "readme.rst", "hatch_build.py"]
+
+# Triggers hatch_build.py (the custom build hook) before each build.
+# The hook uses build_data["force_include"] to inject the script into the wheel
+# as nerd_dictation/__init__.py -- no tracked copy of the module code is needed.
+[tool.hatch.build.hooks.custom]
+
+[tool.black]
+line-length = 119
+target-version = ['py310']
